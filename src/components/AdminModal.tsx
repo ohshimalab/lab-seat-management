@@ -1,0 +1,121 @@
+import React, { useState } from 'react';
+import type { User, UserCategory } from '../types';
+
+interface Props {
+  isOpen: boolean;
+  users: User[];
+  onAddUser: (name: string, category: UserCategory) => void; // 引数変更
+  onRemoveUser: (userId: string) => void;
+  onClose: () => void;
+}
+
+export const AdminModal: React.FC<Props> = ({ isOpen, users, onAddUser, onRemoveUser, onClose }) => {
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserCategory, setNewUserCategory] = useState<UserCategory>('B'); // デフォルトはB
+
+  if (!isOpen) return null;
+
+  const handleAdd = () => {
+    if (!newUserName.trim()) return;
+    onAddUser(newUserName.trim(), newUserCategory);
+    setNewUserName('');
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-2xl m-4 flex flex-col max-h-[85vh]">
+        
+        <div className="flex justify-between items-center mb-6 border-b pb-4">
+          <h2 className="text-2xl font-bold text-gray-800">メンバー管理</h2>
+          <button 
+            onClick={onClose}
+            className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-bold hover:bg-gray-300 active:scale-95 transition-transform"
+          >
+            閉じる
+          </button>
+        </div>
+
+        {/* 新規追加フォーム */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-gray-50 p-4 rounded-lg">
+          <select
+            value={newUserCategory}
+            onChange={(e) => setNewUserCategory(e.target.value as UserCategory)}
+            className="border-2 border-gray-300 rounded-lg px-4 py-3 text-lg font-bold bg-white focus:border-blue-500 cursor-pointer"
+          >
+            <option value="Staff">Staff</option>
+            <option value="D">D (博士)</option>
+            <option value="M">M (修士)</option>
+            <option value="B">B (学部)</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <input
+            type="text"
+            value={newUserName}
+            onChange={(e) => setNewUserName(e.target.value)}
+            placeholder="名前を入力"
+            className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:border-blue-500 focus:outline-none"
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          />
+          
+          <button
+            onClick={handleAdd}
+            disabled={!newUserName.trim()}
+            className="bg-green-500 text-white font-bold px-6 py-3 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md active:scale-95 transition-all whitespace-nowrap"
+          >
+            追加
+          </button>
+        </div>
+
+        {/* メンバーリスト */}
+        <div className="overflow-y-auto flex-1 pr-2">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-gray-500 border-b">
+                <th className="p-2 font-medium">カテゴリー</th>
+                <th className="p-2 font-medium">名前</th>
+                <th className="p-2 font-medium text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="p-3">
+                    <span className={`
+                      px-2 py-1 rounded text-sm font-bold
+                      ${user.category === 'Staff' ? 'bg-purple-100 text-purple-700' : ''}
+                      ${user.category === 'D' ? 'bg-red-100 text-red-700' : ''}
+                      ${user.category === 'M' ? 'bg-blue-100 text-blue-700' : ''}
+                      ${user.category === 'B' ? 'bg-green-100 text-green-700' : ''}
+                      ${(!user.category || user.category === 'Other') ? 'bg-gray-100 text-gray-700' : ''}
+                    `}>
+                      {user.category || 'Other'}
+                    </span>
+                  </td>
+                  <td className="p-3 text-lg font-bold text-gray-700">{user.name}</td>
+                  <td className="p-3 text-right">
+                    <button
+                      onClick={() => {
+                        if(confirm(`「${user.name}」さんを削除してもよろしいですか？`)) {
+                          onRemoveUser(user.id);
+                        }
+                      }}
+                      className="text-red-500 font-bold hover:underline px-2 py-1"
+                    >
+                      削除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {users.length === 0 && (
+            <p className="text-center text-gray-400 py-4">メンバーがいません</p>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+};
