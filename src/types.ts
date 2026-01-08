@@ -1,11 +1,11 @@
 // カテゴリーの定義
-export type UserCategory = 'Staff' | 'D' | 'M' | 'B' | 'Other';
+export type UserCategory = "Staff" | "D" | "M" | "B" | "Other";
 
 // ユーザーの型
 export interface User {
   id: string;
   name: string;
-  category: UserCategory; // ★追加
+  category: UserCategory;
 }
 
 // 座席の型
