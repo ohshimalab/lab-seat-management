@@ -10,7 +10,7 @@ const INITIAL_LAYOUT: SeatLayout[] = [
   { rowId: 'R1', seats: ['R11', 'R12', 'R13' ] },
   { rowId: 'R2', seats: ['R21', 'R22', 'R23', 'R24'] },
   { rowId: 'R3', seats: ['R31', 'R32', 'R33', 'R34'] },
-  { rowId: 'R3', seats: ['R31', 'R32', 'R33', 'R34'] },
+  { rowId: 'R4', seats: ['R41', 'R42', 'R43', 'R44'] },
 
 ];
 
