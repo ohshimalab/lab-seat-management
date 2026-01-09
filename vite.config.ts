@@ -5,4 +5,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: "/lab-seat-management/",
   plugins: [react()],
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/setupTests.ts",
+    globals: true,
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**"],
+  },
 });
