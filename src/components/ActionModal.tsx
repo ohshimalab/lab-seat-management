@@ -4,6 +4,8 @@ interface Props {
   isOpen: boolean;
   seatId: string;
   userName: string;
+  isAway: boolean;
+  onToggleAway: () => void;
   onLeave: () => void;
   onClose: () => void;
 }
@@ -12,6 +14,8 @@ export const ActionModal: React.FC<Props> = ({
   isOpen,
   seatId,
   userName,
+  isAway,
+  onToggleAway,
   onLeave,
   onClose,
 }) => {
@@ -26,6 +30,12 @@ export const ActionModal: React.FC<Props> = ({
           退席しますか？
         </p>
         <div className="flex flex-col gap-3">
+          <button
+            onClick={onToggleAway}
+            className="w-full bg-amber-400 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-lg"
+          >
+            {isAway ? "着席に戻す" : "離席中にする"}
+          </button>
           <button
             onClick={onLeave}
             className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-lg"

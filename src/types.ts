@@ -8,6 +8,13 @@ export interface User {
   category: UserCategory;
 }
 
+export type SeatStatus = "present" | "away";
+
+export interface SeatState {
+  userId: string | null;
+  status: SeatStatus;
+}
+
 // 座席の型
 export interface SeatData {
   id: string;

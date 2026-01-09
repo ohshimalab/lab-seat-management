@@ -5,11 +5,17 @@ import { ActionModal } from "./components/ActionModal";
 import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
-import type { User, SeatLayout, UserCategory } from "./types";
+import type {
+  User,
+  SeatLayout,
+  UserCategory,
+  SeatState,
+  SeatStatus,
+} from "./types";
 
 // --- 初期レイアウト ---
 const INITIAL_LAYOUT: SeatLayout[] = [
-  { rowId: "R1", seats: ["R11", "R12", "R13", "R13"] },
+  { rowId: "R1", seats: ["R11", "R12", "R13"] },
   { rowId: "R2", seats: ["R21", "R22", "R23", "R24"] },
   { rowId: "R3", seats: ["R31", "R32", "R33", "R34"] },
   { rowId: "R4", seats: ["R41", "R42", "R43", "R44"] },
@@ -20,10 +26,37 @@ const DEFAULT_USERS: User[] = [
   { id: "u2", name: "Tanaka", category: "M" },
 ];
 
-const DEFAULT_SEATS: Record<string, string | null> = {};
-INITIAL_LAYOUT.forEach((row) => {
-  row.seats.forEach((seatId) => (DEFAULT_SEATS[seatId] = null));
-});
+const createEmptySeatStates = () => {
+  const base: Record<string, SeatState> = {};
+  INITIAL_LAYOUT.forEach((row) => {
+    row.seats.forEach((seatId) => {
+      base[seatId] = { userId: null, status: "present" };
+    });
+  });
+  return base;
+};
+
+const normalizeSeatStates = (raw: unknown) => {
+  const base = createEmptySeatStates();
+  if (!raw || typeof raw !== "object") return base;
+  const saved = raw as Record<string, unknown>;
+  Object.keys(base).forEach((seatId) => {
+    const value = saved[seatId];
+    if (typeof value === "string" || value === null) {
+      base[seatId] = { userId: value as string | null, status: "present" };
+      return;
+    }
+    if (value && typeof value === "object") {
+      const candidate = value as Partial<SeatState>;
+      const userId =
+        typeof candidate.userId === "string" ? candidate.userId : null;
+      const status: SeatStatus =
+        candidate.status === "away" ? "away" : "present";
+      base[seatId] = { userId, status };
+    }
+  });
+  return base;
+};
 
 function App() {
   const [users, setUsers] = useState<User[]>(() => {
@@ -47,10 +80,17 @@ function App() {
     localStorage.setItem("lab-users-data", JSON.stringify(users));
   }, [users]);
 
-  const [seatStates, setSeatStates] = useState<Record<string, string | null>>(
+  const [seatStates, setSeatStates] = useState<Record<string, SeatState>>(
     () => {
       const saved = localStorage.getItem("lab-seat-data");
-      return saved ? JSON.parse(saved) : DEFAULT_SEATS;
+      if (saved) {
+        try {
+          return normalizeSeatStates(JSON.parse(saved));
+        } catch {
+          return createEmptySeatStates();
+        }
+      }
+      return createEmptySeatStates();
     }
   );
 
@@ -64,7 +104,10 @@ function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   const seatedUserIds = useMemo(
-    () => Object.values(seatStates).filter((id): id is string => id !== null),
+    () =>
+      Object.values(seatStates)
+        .map((s) => s.userId)
+        .filter((id): id is string => id !== null),
     [seatStates]
   );
   const availableUsers = useMemo(
@@ -73,7 +116,7 @@ function App() {
   );
 
   const handleSeatClick = (seatId: string) => {
-    const currentUserId = seatStates[seatId];
+    const currentUserId = seatStates[seatId]?.userId || null;
     setSelectedSeatId(seatId);
     if (currentUserId) setIsActionModalOpen(true);
     else setIsUserModalOpen(true);
@@ -81,15 +124,40 @@ function App() {
 
   const handleLeaveSeat = () => {
     if (!selectedSeatId) return;
-    setSeatStates((prev) => ({ ...prev, [selectedSeatId]: null }));
+    setSeatStates((prev) => ({
+      ...prev,
+      [selectedSeatId]: { userId: null, status: "present" },
+    }));
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
   };
 
   const handleUserSelect = (user: User) => {
     if (!selectedSeatId) return;
-    setSeatStates((prev) => ({ ...prev, [selectedSeatId]: user.id }));
+    setSeatStates((prev) => ({
+      ...prev,
+      [selectedSeatId]: { userId: user.id, status: "present" },
+    }));
     setIsUserModalOpen(false);
+    setSelectedSeatId(null);
+  };
+
+  const handleToggleAway = () => {
+    if (!selectedSeatId) return;
+    setSeatStates((prev) => {
+      const current = prev[selectedSeatId] || {
+        userId: null,
+        status: "present",
+      };
+      if (!current.userId) return prev;
+      const nextStatus: SeatStatus =
+        current.status === "away" ? "present" : "away";
+      return {
+        ...prev,
+        [selectedSeatId]: { ...current, status: nextStatus },
+      };
+    });
+    setIsActionModalOpen(false);
     setSelectedSeatId(null);
   };
 
@@ -104,7 +172,9 @@ function App() {
     setSeatStates((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
-        if (next[key] === userId) next[key] = null;
+        if (next[key]?.userId === userId) {
+          next[key] = { userId: null, status: "present" };
+        }
       });
       return next;
     });
@@ -113,12 +183,12 @@ function App() {
 
   const handleReset = () => {
     if (confirm("全ての席状況をリセットしますか？"))
-      setSeatStates(DEFAULT_SEATS);
+      setSeatStates(createEmptySeatStates());
   };
 
   const getSelectedUserName = () => {
     if (!selectedSeatId) return "";
-    const userId = seatStates[selectedSeatId];
+    const userId = seatStates[selectedSeatId]?.userId || null;
     return users.find((u) => u.id === userId)?.name || "";
   };
 
@@ -155,15 +225,19 @@ function App() {
               </h2>
               <div className="flex flex-wrap gap-2">
                 {row.seats.map((seatId) => {
-                  const currentUserId = seatStates[seatId];
-                  const currentUser = currentUserId
-                    ? users.find((u) => u.id === currentUserId) || null
+                  const seatState = seatStates[seatId] || {
+                    userId: null,
+                    status: "present" as SeatStatus,
+                  };
+                  const currentUser = seatState.userId
+                    ? users.find((u) => u.id === seatState.userId) || null
                     : null;
                   return (
                     <Seat
                       key={seatId}
                       seatId={seatId}
                       currentUser={currentUser}
+                      status={seatState.status}
                       onClick={handleSeatClick}
                     />
                   );
@@ -191,6 +265,10 @@ function App() {
         isOpen={isActionModalOpen}
         seatId={selectedSeatId || ""}
         userName={getSelectedUserName()}
+        isAway={
+          selectedSeatId ? seatStates[selectedSeatId]?.status === "away" : false
+        }
+        onToggleAway={handleToggleAway}
         onLeave={handleLeaveSeat}
         onClose={() => setIsActionModalOpen(false)}
       />
