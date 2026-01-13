@@ -40,9 +40,9 @@ describe("seat management - seating and clearing", () => {
     expect(saved.R11?.status ?? "present").toBe("present");
   });
 
-  it("assigns random seat and can reroll", async () => {
+  it("assigns random seat", async () => {
     const user = userEvent.setup();
-    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.99);
+    vi.spyOn(Math, "random").mockReturnValue(0);
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "🎲 ランダム着席" }));
@@ -51,17 +51,6 @@ describe("seat management - seating and clearing", () => {
 
     const firstSeat = screen.getByText("R11").closest("div");
     expect(firstSeat).toHaveTextContent("Yamada");
-
-    const rerollButton = await screen.findByRole("button", {
-      name: "もう一度ランダム",
-    });
-    await user.click(rerollButton);
-
-    const updatedFirstSeat = screen.getByText("R11").closest("div");
-    expect(updatedFirstSeat).toHaveTextContent("空席");
-
-    const rerolledSeat = screen.getByText("R44").closest("div");
-    expect(rerolledSeat).toHaveTextContent("Yamada");
   });
 
   it("auto resets seats at 6am", { timeout: 10000 }, async () => {

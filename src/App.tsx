@@ -216,13 +216,6 @@ function App() {
     assignRandomSeatForUser(user);
   };
 
-  const handleRandomAgain = () => {
-    if (!randomUserId) return;
-    const targetUser = users.find((u) => u.id === randomUserId);
-    if (!targetUser) return;
-    assignRandomSeatForUser(targetUser);
-  };
-
   const handleToggleAway = () => {
     if (!selectedSeatId) return;
     setSeatStates((prev) => {
@@ -373,7 +366,6 @@ function App() {
         assignedSeatId={randomSeatId}
         hasAnySeat={hasEmptySeat || Boolean(randomUserId)}
         onSelectUser={handleRandomSelect}
-        onAssignAgain={handleRandomAgain}
         onClose={() => setIsRandomModalOpen(false)}
       />
     </div>

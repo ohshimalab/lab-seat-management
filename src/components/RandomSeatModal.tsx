@@ -8,7 +8,6 @@ interface Props {
   assignedSeatId: string | null;
   hasAnySeat: boolean;
   onSelectUser: (user: User) => void;
-  onAssignAgain: () => void;
   onClose: () => void;
 }
 
@@ -27,7 +26,6 @@ export const RandomSeatModal: React.FC<Props> = ({
   assignedSeatId,
   hasAnySeat,
   onSelectUser,
-  onAssignAgain,
   onClose,
 }) => {
   if (!isOpen) return null;
@@ -47,7 +45,6 @@ export const RandomSeatModal: React.FC<Props> = ({
   }, [users]);
 
   const disabledSelect = !hasAnySeat || users.length === 0;
-  const canReroll = Boolean(selectedUserId) && hasAnySeat;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
@@ -122,15 +119,6 @@ export const RandomSeatModal: React.FC<Props> = ({
               </div>
             )}
           </div>
-          <button
-            onClick={onAssignAgain}
-            disabled={!canReroll}
-            className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-lg ${
-              !canReroll ? "opacity-60 cursor-not-allowed" : ""
-            }`}
-          >
-            もう一度ランダム
-          </button>
         </div>
       </div>
     </div>
