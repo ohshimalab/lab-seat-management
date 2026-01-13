@@ -28,7 +28,9 @@ describe("weekly histogram", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "📊 週別滞在ヒストグラム" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "📊 週別滞在ヒストグラム" })
+    );
 
     const prev = screen.getByRole("button", { name: "＜ 前の週" });
     const next = screen.getByRole("button", { name: "次の週 ＞" });

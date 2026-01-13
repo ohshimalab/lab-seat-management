@@ -98,7 +98,9 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
 
         <div className="flex-1 overflow-y-auto">
           {empty ? (
-            <div className="text-center text-gray-500 py-10">データがありません</div>
+            <div className="text-center text-gray-500 py-10">
+              データがありません
+            </div>
           ) : (
             <div className="h-64 flex items-end gap-3 px-2" role="list">
               {weeks.map((week) => {
@@ -116,7 +118,10 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
                     }`}
                     aria-label={`${week.label} ${week.formatted}`}
                   >
-                    <div className="w-full bg-emerald-500 rounded-t-md" style={{ height: `${heightPercent}%` }} />
+                    <div
+                      className="w-full bg-emerald-500 rounded-t-md"
+                      style={{ height: `${heightPercent}%` }}
+                    />
                     <div className="text-sm font-mono font-bold text-gray-800">
                       {week.formatted}
                     </div>

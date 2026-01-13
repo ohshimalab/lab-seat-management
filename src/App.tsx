@@ -323,10 +323,27 @@ function App() {
     return map;
   }, [users, stayHistory, weekKey]);
 
-  const selectedWeekTotals = useMemo(
-    () => stayHistory[selectedWeekKey] || {},
-    [stayHistory, selectedWeekKey]
-  );
+  const liveCurrentWeekSeconds = (() => {
+    const now = Date.now();
+    const live: Record<string, number> = {};
+    Object.values(seatStates).forEach((seat) => {
+      if (!seat?.userId || !seat.startedAt) return;
+      const elapsed = Math.max(0, Math.floor((now - seat.startedAt) / 1000));
+      if (elapsed === 0) return;
+      live[seat.userId] = (live[seat.userId] || 0) + elapsed;
+    });
+    return live;
+  })();
+
+  const selectedWeekTotals = useMemo(() => {
+    const base = stayHistory[selectedWeekKey] || {};
+    if (selectedWeekKey !== weekKey) return base;
+    const merged: Record<string, number> = { ...base };
+    Object.entries(liveCurrentWeekSeconds).forEach(([userId, live]) => {
+      merged[userId] = (merged[userId] || 0) + live;
+    });
+    return merged;
+  }, [stayHistory, selectedWeekKey, weekKey, liveCurrentWeekSeconds]);
 
   const weekTotals = useMemo(() => {
     const map: Record<string, number> = {};
@@ -337,8 +354,13 @@ function App() {
       );
       map[key] = sum;
     });
+    const liveSum = Object.values(liveCurrentWeekSeconds).reduce(
+      (acc, value) => acc + value,
+      0
+    );
+    map[weekKey] = (map[weekKey] || 0) + liveSum;
     return map;
-  }, [stayHistory]);
+  }, [stayHistory, liveCurrentWeekSeconds, weekKey]);
 
   const sortedWeekKeys = useMemo(() => {
     const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
@@ -406,7 +428,7 @@ function App() {
   }, [histogramWeeks]);
 
   const selectedWeekTotalFormatted = formatStayDuration(
-    weekTotals[selectedWeekKey] || 0
+    Object.values(selectedWeekTotals).reduce((acc, v) => acc + v, 0)
   );
 
   const handleSeatClick = (seatId: string) => {

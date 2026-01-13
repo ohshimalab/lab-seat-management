@@ -56,4 +56,23 @@ describe("leaderboard modal", () => {
 
     vi.useRealTimers();
   });
+
+  it("shows live stay time for current week without leaving", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-08T09:00:00"));
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("R11"));
+    fireEvent.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    vi.setSystemTime(new Date("2024-01-08T11:00:00"));
+
+    fireEvent.click(screen.getByRole("button", { name: "🏆 滞在ランキング" }));
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Yamada");
+    expect(rows[0]).toHaveTextContent("2h0m");
+
+    vi.useRealTimers();
+  });
 });
