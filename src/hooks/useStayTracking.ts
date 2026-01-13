@@ -18,11 +18,16 @@ const getWeekStartKey = (date: Date) => {
   return formatDateKey(weekStart);
 };
 
-const formatStayDuration = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+const formatStayDurationMinutes = (minutes: number) => {
+  const safeMinutes = Math.max(0, Math.ceil(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
   return hours > 0 ? `${hours}h${mins}m` : `${mins}m`;
+};
+
+const formatStayDuration = (seconds: number) => {
+  const minutes = Math.ceil(seconds / 60);
+  return formatStayDurationMinutes(minutes);
 };
 
 const formatWeekLabel = (weekKey: string) => {
@@ -165,6 +170,11 @@ export function useStayTracking({
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const current = Date.now();
+    setNowMs((prev) => (prev === current ? prev : current));
+  });
+
   const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
   const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(() => {
@@ -215,18 +225,35 @@ export function useStayTracking({
   const leaderboardRows = useMemo(() => {
     const rows = users.map((user) => {
       const seconds = selectedWeekTotals[user.id] || 0;
+      const minutes = Math.ceil(seconds / 60);
       return {
         userId: user.id,
         name: user.name,
         seconds,
-        formatted: formatStayDuration(seconds),
+        minutes,
+        formatted: formatStayDurationMinutes(minutes),
       };
     });
+
     rows.sort((a, b) => {
-      if (a.seconds === b.seconds) return a.name.localeCompare(b.name);
-      return b.seconds - a.seconds;
+      if (a.minutes === b.minutes) return a.name.localeCompare(b.name);
+      return b.minutes - a.minutes;
     });
-    return rows;
+
+    let currentRank = 1;
+    let lastMinutes: number | null = null;
+    return rows.map((row, index) => {
+      if (index === 0) {
+        lastMinutes = row.minutes;
+        return { ...row, rank: currentRank };
+      }
+      if (row.minutes === lastMinutes) {
+        return { ...row, rank: currentRank };
+      }
+      currentRank += 1;
+      lastMinutes = row.minutes;
+      return { ...row, rank: currentRank };
+    });
   }, [users, selectedWeekTotals]);
 
   const sortedWeekKeys = useMemo(() => {

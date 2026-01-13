@@ -6,6 +6,7 @@ interface LeaderboardRow {
   name: string;
   seconds: number;
   formatted: string;
+  rank: number;
 }
 
 interface Props {
@@ -98,7 +99,7 @@ export const LeaderboardModal: React.FC<Props> = ({
             </div>
           ) : (
             <div className="space-y-2" role="list">
-              {rows.map((row, index) => (
+              {rows.map((row) => (
                 <div
                   key={row.userId}
                   role="listitem"
@@ -106,7 +107,7 @@ export const LeaderboardModal: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center">
-                      {index + 1}
+                      {row.rank}
                     </span>
                     <div className="flex flex-col min-w-0">
                       <span className="font-bold text-gray-900 truncate">

@@ -50,7 +50,7 @@ describe("leaderboard modal", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "🏆 滞在ランキング" }));
+    fireEvent.click(screen.getByRole("button", { name: "🏆 リーダーボード" }));
 
     // Go to week starting 2024-01-15 (next available week)
     fireEvent.click(screen.getByRole("button", { name: "次の週 ＞" }));
@@ -86,7 +86,7 @@ describe("leaderboard modal", () => {
 
     vi.setSystemTime(new Date("2024-01-08T11:00:00"));
 
-    fireEvent.click(screen.getByRole("button", { name: "🏆 滞在ランキング" }));
+    fireEvent.click(screen.getByRole("button", { name: "🏆 リーダーボード" }));
     const rows = screen.getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("Yamada");
     expect(rows[0]).toHaveTextContent("2h0m");
