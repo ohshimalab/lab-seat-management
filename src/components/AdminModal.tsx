@@ -1,11 +1,19 @@
-import React, { useState } from "react";
-import type { User, UserCategory } from "../types";
+import React, { useMemo, useState } from "react";
+import type { StaySession, User, UserCategory } from "../types";
 
 interface Props {
   isOpen: boolean;
   users: User[];
   onAddUser: (name: string, category: UserCategory) => void;
   onRemoveUser: (userId: string) => void;
+  sessions: StaySession[];
+  onAddSession: (session: {
+    userId: string;
+    seatId: string;
+    start: number;
+    end: number | null;
+  }) => void;
+  onRemoveSession: (sessionId: string) => void;
   onClose: () => void;
 }
 
@@ -14,10 +22,31 @@ export const AdminModal: React.FC<Props> = ({
   users,
   onAddUser,
   onRemoveUser,
+  sessions,
+  onAddSession,
+  onRemoveSession,
   onClose,
 }) => {
   const [newUserName, setNewUserName] = useState("");
   const [newUserCategory, setNewUserCategory] = useState<UserCategory>("B");
+  const [sessionUserId, setSessionUserId] = useState<string>("");
+  const [sessionSeatId, setSessionSeatId] = useState<string>("");
+  const [sessionStart, setSessionStart] = useState<string>("");
+  const [sessionEnd, setSessionEnd] = useState<string>("");
+
+  const sortedSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => (b.start || 0) - (a.start || 0))
+      .slice(0, 50);
+  }, [sessions]);
+
+  const userNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((u) => {
+      map[u.id] = u.name;
+    });
+    return map;
+  }, [users]);
 
   if (!isOpen) return null;
 
@@ -25,6 +54,28 @@ export const AdminModal: React.FC<Props> = ({
     if (!newUserName.trim()) return;
     onAddUser(newUserName.trim(), newUserCategory);
     setNewUserName("");
+  };
+
+  const parseDateInput = (value: string) => {
+    if (!value) return null;
+    const ms = Date.parse(value);
+    return Number.isNaN(ms) ? null : ms;
+  };
+
+  const handleAddSession = () => {
+    const startMs = parseDateInput(sessionStart);
+    const endMs = sessionEnd ? parseDateInput(sessionEnd) : null;
+    if (!sessionUserId || !sessionSeatId || startMs === null) return;
+    if (endMs !== null && endMs <= startMs) return;
+    onAddSession({
+      userId: sessionUserId,
+      seatId: sessionSeatId,
+      start: startMs,
+      end: endMs,
+    });
+    setSessionSeatId("");
+    setSessionStart("");
+    setSessionEnd("");
   };
 
   return (
@@ -132,6 +183,94 @@ export const AdminModal: React.FC<Props> = ({
           {users.length === 0 && (
             <p className="text-center text-gray-400 py-4">メンバーがいません</p>
           )}
+
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-gray-800">履歴管理</h3>
+              <span className="text-sm text-gray-500">最近50件まで表示</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 mb-3 bg-gray-50 p-3 rounded-lg">
+              <select
+                value={sessionUserId}
+                onChange={(e) => setSessionUserId(e.target.value)}
+                className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base bg-white"
+              >
+                <option value="">ユーザーを選択</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={sessionSeatId}
+                onChange={(e) => setSessionSeatId(e.target.value)}
+                placeholder="席ID (例: R11)"
+                className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base"
+              />
+              <input
+                type="datetime-local"
+                value={sessionStart}
+                onChange={(e) => setSessionStart(e.target.value)}
+                className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base"
+              />
+              <input
+                type="datetime-local"
+                value={sessionEnd}
+                onChange={(e) => setSessionEnd(e.target.value)}
+                className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base"
+              />
+              <button
+                onClick={handleAddSession}
+                disabled={!sessionUserId || !sessionSeatId || !sessionStart}
+                className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                追加
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {sortedSessions.map((session) => {
+                const startStr = new Date(session.start).toLocaleString();
+                const endStr = session.end
+                  ? new Date(session.end).toLocaleString()
+                  : "進行中";
+                const name = userNameMap[session.userId] || session.userId;
+                return (
+                  <div
+                    key={session.id || `${session.userId}-${session.start}`}
+                    className="flex items-center justify-between border border-gray-200 rounded-lg p-3 bg-white shadow-sm"
+                  >
+                    <div className="flex flex-col text-sm md:text-base text-gray-800">
+                      <span className="font-bold">{name}</span>
+                      <span className="text-gray-600">
+                        席: {session.seatId}
+                      </span>
+                      <span className="text-gray-600">開始: {startStr}</span>
+                      <span className="text-gray-600">終了: {endStr}</span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        confirm("この履歴を削除しますか？") &&
+                        session.id &&
+                        onRemoveSession(session.id)
+                      }
+                      className="text-red-500 font-bold hover:underline text-sm"
+                    >
+                      削除
+                    </button>
+                  </div>
+                );
+              })}
+              {sortedSessions.length === 0 && (
+                <div className="text-center text-gray-400 py-3">
+                  履歴がありません
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

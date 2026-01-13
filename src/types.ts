@@ -17,6 +17,7 @@ export interface SeatState {
 }
 
 export interface StaySession {
+  id?: string;
   userId: string;
   seatId: string;
   start: number;

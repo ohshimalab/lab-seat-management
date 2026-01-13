@@ -34,6 +34,8 @@ const formatWeekLabel = (weekKey: string) => {
 };
 
 const SESSIONS_KEY = "lab-stay-sessions";
+const newSessionId = () =>
+  `sess-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
 const loadStayData = () => {
   const current = getWeekStartKey(new Date());
@@ -84,6 +86,7 @@ const loadSessions = () => {
           const endValue =
             typeof item.end === "number" || item.end === null ? item.end : null;
           return {
+            id: typeof item.id === "string" ? item.id : newSessionId(),
             userId: item.userId,
             seatId: item.seatId,
             start: item.start,
@@ -108,6 +111,7 @@ const migrateTotalsToSessions = () => {
       if (!seconds) return;
       const durationMs = seconds * 1000;
       sessions.push({
+        id: newSessionId(),
         userId,
         seatId: "unknown",
         start: startMs,
@@ -291,7 +295,7 @@ export function useStayTracking({
   const startSession = (userId: string, seatId: string, startedAt: number) => {
     setSessions((prev) => [
       ...prev,
-      { userId, seatId, start: startedAt, end: null },
+      { id: newSessionId(), userId, seatId, start: startedAt, end: null },
     ]);
   };
 
@@ -311,6 +315,26 @@ export function useStayTracking({
       });
       return changed ? next : prev;
     });
+  };
+
+  const addSessionManual = (
+    userId: string,
+    seatId: string,
+    start: number,
+    end: number | null
+  ) => {
+    if (!userId || !seatId || !start) return false;
+    if (end !== null && end <= start) return false;
+    setSessions((prev) => [
+      ...prev,
+      { id: newSessionId(), userId, seatId, start, end },
+    ]);
+    return true;
+  };
+
+  const removeSession = (sessionId: string) => {
+    if (!sessionId) return;
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   };
 
   useEffect(() => {
@@ -335,6 +359,7 @@ export function useStayTracking({
           Object.entries(seatStates).forEach(([seatId, seat]) => {
             if (seat?.userId) {
               reopened.push({
+                id: newSessionId(),
                 userId: seat.userId,
                 seatId,
                 start: nowMs,
@@ -404,6 +429,9 @@ export function useStayTracking({
     stayDurationDisplay,
     startSession,
     endSession,
+    addSessionManual,
+    removeSession,
+    sessions,
     handlePrevWeek,
     handleNextWeek,
     handleThisWeek,

@@ -154,6 +154,9 @@ function App() {
     stayDurationDisplay,
     startSession,
     endSession,
+    addSessionManual,
+    removeSession,
+    sessions,
     handlePrevWeek,
     handleNextWeek,
     handleThisWeek,
@@ -397,6 +400,16 @@ function App() {
         users={users}
         onAddUser={handleAddUser}
         onRemoveUser={handleRemoveUser}
+        sessions={sessions}
+        onAddSession={(session) =>
+          addSessionManual(
+            session.userId,
+            session.seatId,
+            session.start,
+            session.end
+          )
+        }
+        onRemoveSession={removeSession}
         onClose={() => setIsAdminModalOpen(false)}
       />
       <RandomSeatModal
