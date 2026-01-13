@@ -61,10 +61,8 @@ const normalizeSeatStates = (raw: unknown) => {
         typeof candidate.userId === "string" ? candidate.userId : null;
       const status: SeatStatus =
         candidate.status === "away" ? "away" : "present";
-      const startedAt =
-        typeof (candidate as { startedAt?: unknown }).startedAt === "number"
-          ? (candidate as { startedAt?: number }).startedAt
-          : null;
+      const startedAt: number | null =
+        typeof candidate.startedAt === "number" ? candidate.startedAt : null;
       base[seatId] = { userId, status, startedAt };
     }
   });
@@ -111,13 +109,15 @@ function App() {
     localStorage.setItem("lab-seat-data", JSON.stringify(seatStates));
   }, [seatStates]);
 
-  const finalizeSeatOccupant = (seatId: string) => {
+  const finalizeSeatOccupant = (seatId: string, now: number) => {
     const seat = seatStates[seatId];
-    if (seat?.userId) endSession(seat.userId, seatId, Date.now());
+    if (seat?.userId) endSession(seat.userId, seatId, now);
   };
 
-  const finalizeAllSeats = () => {
-    Object.keys(seatStates).forEach((seatId) => finalizeSeatOccupant(seatId));
+  const finalizeAllSeats = (now: number) => {
+    Object.keys(seatStates).forEach((seatId) =>
+      finalizeSeatOccupant(seatId, now)
+    );
   };
 
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
@@ -149,7 +149,6 @@ function App() {
 
   const {
     selectedWeekLabel,
-    selectedWeekTotalFormatted,
     leaderboardRows,
     disablePrevWeek,
     disableNextWeek,
@@ -182,7 +181,8 @@ function App() {
 
   const handleLeaveSeat = () => {
     if (!selectedSeatId) return;
-    finalizeSeatOccupant(selectedSeatId);
+    const now = Date.now();
+    finalizeSeatOccupant(selectedSeatId, now);
     setSeatStates((prev) => ({
       ...prev,
       [selectedSeatId]: { userId: null, status: "present", startedAt: null },
@@ -374,7 +374,8 @@ function App() {
 
   const handleReset = () => {
     if (confirm("全ての席状況をリセットしますか？")) {
-      finalizeAllSeats();
+      const now = Date.now();
+      finalizeAllSeats(now);
       setSeatStates(createEmptySeatStates());
     }
   };
