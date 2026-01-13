@@ -155,6 +155,7 @@ function App() {
     startSession,
     endSession,
     addSessionManual,
+    updateSession,
     removeSession,
     sessions,
     handlePrevWeek,
@@ -312,7 +313,7 @@ function App() {
             onClick={() => setIsLeaderboardOpen(true)}
             className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
           >
-            🏆 滞在ランキング
+            🏆 リーダーボード
           </button>
           <button
             onClick={handleOpenRandom}
@@ -409,6 +410,7 @@ function App() {
             session.end
           )
         }
+        onUpdateSession={updateSession}
         onRemoveSession={removeSession}
         onClose={() => setIsAdminModalOpen(false)}
       />

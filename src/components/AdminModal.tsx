@@ -13,6 +13,15 @@ interface Props {
     start: number;
     end: number | null;
   }) => void;
+  onUpdateSession: (
+    sessionId: string,
+    payload: {
+      userId: string;
+      seatId: string;
+      start: number;
+      end: number | null;
+    }
+  ) => void;
   onRemoveSession: (sessionId: string) => void;
   onClose: () => void;
 }
@@ -24,6 +33,7 @@ export const AdminModal: React.FC<Props> = ({
   onRemoveUser,
   sessions,
   onAddSession,
+  onUpdateSession,
   onRemoveSession,
   onClose,
 }) => {
@@ -33,6 +43,11 @@ export const AdminModal: React.FC<Props> = ({
   const [sessionSeatId, setSessionSeatId] = useState<string>("");
   const [sessionStart, setSessionStart] = useState<string>("");
   const [sessionEnd, setSessionEnd] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState<string>("");
+  const [editSeatId, setEditSeatId] = useState<string>("");
+  const [editStart, setEditStart] = useState<string>("");
+  const [editEnd, setEditEnd] = useState<string>("");
 
   const sortedSessions = useMemo(() => {
     return [...sessions]
@@ -56,6 +71,13 @@ export const AdminModal: React.FC<Props> = ({
     setNewUserName("");
   };
 
+  const toInputValue = (value: number) => {
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - offset * 60 * 1000);
+    return local.toISOString().slice(0, 16);
+  };
+
   const parseDateInput = (value: string) => {
     if (!value) return null;
     const ms = Date.parse(value);
@@ -76,6 +98,34 @@ export const AdminModal: React.FC<Props> = ({
     setSessionSeatId("");
     setSessionStart("");
     setSessionEnd("");
+  };
+
+  const beginEdit = (session: StaySession) => {
+    if (!session.id) return;
+    setEditingId(session.id);
+    setEditUserId(session.userId);
+    setEditSeatId(session.seatId);
+    setEditStart(toInputValue(session.start));
+    setEditEnd(session.end ? toInputValue(session.end) : "");
+  };
+
+  const handleUpdateSession = () => {
+    if (!editingId) return;
+    const startMs = parseDateInput(editStart);
+    const endMs = editEnd ? parseDateInput(editEnd) : null;
+    if (!editUserId || !editSeatId || startMs === null) return;
+    if (endMs !== null && endMs <= startMs) return;
+    onUpdateSession(editingId, {
+      userId: editUserId,
+      seatId: editSeatId,
+      start: startMs,
+      end: endMs,
+    });
+    setEditingId(null);
+    setEditUserId("");
+    setEditSeatId("");
+    setEditStart("");
+    setEditEnd("");
   };
 
   return (
@@ -214,12 +264,14 @@ export const AdminModal: React.FC<Props> = ({
                 type="datetime-local"
                 value={sessionStart}
                 onChange={(e) => setSessionStart(e.target.value)}
+                aria-label="session-start"
                 className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base"
               />
               <input
                 type="datetime-local"
                 value={sessionEnd}
                 onChange={(e) => setSessionEnd(e.target.value)}
+                aria-label="session-end"
                 className="border-2 border-gray-300 rounded-lg px-2 py-2 text-sm md:text-base"
               />
               <button
@@ -238,29 +290,95 @@ export const AdminModal: React.FC<Props> = ({
                   ? new Date(session.end).toLocaleString()
                   : "進行中";
                 const name = userNameMap[session.userId] || session.userId;
+                const isEditing = editingId === session.id;
+                const rowKey =
+                  session.id || `${session.userId}-${session.start}`;
                 return (
                   <div
-                    key={session.id || `${session.userId}-${session.start}`}
+                    key={rowKey}
                     className="flex items-center justify-between border border-gray-200 rounded-lg p-3 bg-white shadow-sm"
                   >
-                    <div className="flex flex-col text-sm md:text-base text-gray-800">
-                      <span className="font-bold">{name}</span>
-                      <span className="text-gray-600">
-                        席: {session.seatId}
-                      </span>
-                      <span className="text-gray-600">開始: {startStr}</span>
-                      <span className="text-gray-600">終了: {endStr}</span>
-                    </div>
-                    <button
-                      onClick={() =>
-                        confirm("この履歴を削除しますか？") &&
-                        session.id &&
-                        onRemoveSession(session.id)
-                      }
-                      className="text-red-500 font-bold hover:underline text-sm"
-                    >
-                      削除
-                    </button>
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2 w-full md:flex-row md:items-end md:gap-3">
+                        <select
+                          value={editUserId}
+                          onChange={(e) => setEditUserId(e.target.value)}
+                          aria-label="edit-user"
+                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm bg-white"
+                        >
+                          {users.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={editSeatId}
+                          onChange={(e) => setEditSeatId(e.target.value)}
+                          aria-label="edit-seat"
+                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="datetime-local"
+                          value={editStart}
+                          onChange={(e) => setEditStart(e.target.value)}
+                          aria-label="edit-start"
+                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="datetime-local"
+                          value={editEnd}
+                          onChange={(e) => setEditEnd(e.target.value)}
+                          aria-label="edit-end"
+                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                        />
+                        <div className="flex gap-2 justify-end w-full md:w-auto">
+                          <button
+                            onClick={handleUpdateSession}
+                            className="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-500"
+                          >
+                            保存
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="text-gray-600 font-bold px-3 py-1.5 rounded-lg text-sm hover:underline"
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col text-sm md:text-base text-gray-800 flex-1">
+                        <span className="font-bold">{name}</span>
+                        <span className="text-gray-600">
+                          席: {session.seatId}
+                        </span>
+                        <span className="text-gray-600">開始: {startStr}</span>
+                        <span className="text-gray-600">終了: {endStr}</span>
+                      </div>
+                    )}
+                    {!isEditing && (
+                      <div className="flex items-center gap-3 ml-3">
+                        <button
+                          onClick={() => session.id && beginEdit(session)}
+                          className="text-blue-600 font-bold hover:underline text-sm"
+                          disabled={!session.id}
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() =>
+                            confirm("この履歴を削除しますか？") &&
+                            session.id &&
+                            onRemoveSession(session.id)
+                          }
+                          className="text-red-500 font-bold hover:underline text-sm"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -159,8 +159,16 @@ export function useStayTracking({
     return migrateTotalsToSessions();
   })();
 
-  const initialTotals = aggregateWeekUserTotals(initialSessions, Date.now());
-  const initialSelectedWeekKey = (() => {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
+  const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
+  const [selectedWeekKey, setSelectedWeekKey] = useState<string>(() => {
+    const initialTotals = aggregateWeekUserTotals(initialSessions, nowMs);
     const available = Object.entries(initialTotals)
       .filter(([, totals]) =>
         Object.values(totals || {}).some((value) => (value || 0) > 0)
@@ -168,18 +176,10 @@ export function useStayTracking({
       .map(([key]) => key)
       .sort();
     return available[available.length - 1] || initialWeekKey;
-  })();
-
-  const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
-  const [selectedWeekKey, setSelectedWeekKey] = useState<string>(
-    initialSelectedWeekKey
-  );
-  const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
+  });
   const [lastResetDate, setLastResetDate] = useState<string | null>(() => {
     return localStorage.getItem("lab-last-reset-date");
   });
-
-  const nowMs = Date.now();
 
   useEffect(() => {
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
@@ -332,6 +332,28 @@ export function useStayTracking({
     return true;
   };
 
+  const updateSession = (
+    sessionId: string,
+    payload: {
+      userId: string;
+      seatId: string;
+      start: number;
+      end: number | null;
+    }
+  ) => {
+    const { userId, seatId, start, end } = payload;
+    if (!sessionId || !userId || !seatId || !start) return false;
+    if (end !== null && end <= start) return false;
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.id === sessionId
+          ? { ...session, userId, seatId, start, end }
+          : session
+      )
+    );
+    return true;
+  };
+
   const removeSession = (sessionId: string) => {
     if (!sessionId) return;
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
@@ -430,6 +452,7 @@ export function useStayTracking({
     startSession,
     endSession,
     addSessionManual,
+    updateSession,
     removeSession,
     sessions,
     handlePrevWeek,
