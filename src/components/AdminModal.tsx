@@ -130,7 +130,7 @@ export const AdminModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
-      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-2xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[85vh]">
+      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-3xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[85vh]">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
           <h2 className="text-xl md:text-2xl font-bold text-gray-800">
             メンバー管理
@@ -299,53 +299,58 @@ export const AdminModal: React.FC<Props> = ({
                     className="flex items-center justify-between border border-gray-200 rounded-lg p-3 bg-white shadow-sm"
                   >
                     {isEditing ? (
-                      <div className="flex flex-col gap-2 w-full md:flex-row md:items-end md:gap-3">
-                        <select
-                          value={editUserId}
-                          onChange={(e) => setEditUserId(e.target.value)}
-                          aria-label="edit-user"
-                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm bg-white"
-                        >
-                          {users.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          value={editSeatId}
-                          onChange={(e) => setEditSeatId(e.target.value)}
-                          aria-label="edit-seat"
-                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
-                        />
-                        <input
-                          type="datetime-local"
-                          value={editStart}
-                          onChange={(e) => setEditStart(e.target.value)}
-                          aria-label="edit-start"
-                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
-                        />
-                        <input
-                          type="datetime-local"
-                          value={editEnd}
-                          onChange={(e) => setEditEnd(e.target.value)}
-                          aria-label="edit-end"
-                          className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
-                        />
-                        <div className="flex gap-2 justify-end w-full md:w-auto">
-                          <button
-                            onClick={handleUpdateSession}
-                            className="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-500"
+                      <div className="flex flex-col gap-2 w-full md:flex-col md:items-end md:gap-3">
+                        <div className="flex flex-col gap-2 w-full md:flex-row md:items-end md:gap-3">
+                          <select
+                            value={editUserId}
+                            onChange={(e) => setEditUserId(e.target.value)}
+                            aria-label="edit-user"
+                            className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm bg-white"
                           >
-                            保存
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="text-gray-600 font-bold px-3 py-1.5 rounded-lg text-sm hover:underline"
-                          >
-                            キャンセル
-                          </button>
+                            {users.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            value={editSeatId}
+                            onChange={(e) => setEditSeatId(e.target.value)}
+                            aria-label="edit-seat"
+                            className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="datetime-local"
+                            value={editStart}
+                            onChange={(e) => setEditStart(e.target.value)}
+                            aria-label="edit-start"
+                            className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="datetime-local"
+                            value={editEnd}
+                            onChange={(e) => setEditEnd(e.target.value)}
+                            aria-label="edit-end"
+                            className="border-2 border-gray-300 rounded-lg px-2 py-1 text-sm"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2 w-full md:flex-row md:items-end md:gap-3">
+                          <div className="flex gap-2 justify-end w-full md:w-auto">
+                            <button
+                              onClick={handleUpdateSession}
+                              className="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-500"
+                            >
+                              保存
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="text-gray-600 font-bold px-3 py-1.5 rounded-lg text-sm hover:underline"
+                            >
+                              キャンセル
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
