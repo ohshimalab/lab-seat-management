@@ -53,9 +53,9 @@ describe("seat management - seating and clearing", () => {
     expect(firstSeat).toHaveTextContent("Yamada");
   });
 
-  it("auto resets seats at 6am", { timeout: 10000 }, async () => {
+  it("auto resets seats when opened at or after 22:30", { timeout: 10000 }, async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-01-02T06:00:00"));
+    vi.setSystemTime(new Date("2024-01-02T22:30:00"));
     localStorage.setItem(
       "lab-seat-data",
       JSON.stringify({ R11: { userId: "u1", status: "present" } })
@@ -76,6 +76,36 @@ describe("seat management - seating and clearing", () => {
     const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
     expect(saved.R11?.userId ?? null).toBeNull();
     expect(saved.R11?.status ?? "present").toBe("present");
+    expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
+
+    vi.useRealTimers();
+  });
+
+  it("catches up reset when opened before 6am", { timeout: 10000 }, async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-03T05:30:00"));
+    localStorage.setItem(
+      "lab-seat-data",
+      JSON.stringify({ R11: { userId: "u1", status: "present" } })
+    );
+    localStorage.setItem(
+      "lab-users-data",
+      JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
+    );
+    localStorage.setItem("lab-last-reset-date", "2024-01-01");
+
+    render(<App />);
+
+    await Promise.resolve();
+
+    const clearedSeat = screen.getByText("R11").closest("div");
+    expect(clearedSeat).toHaveTextContent("空席");
+
+    const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+    expect(saved.R11?.userId ?? null).toBeNull();
+    expect(saved.R11?.status ?? "present").toBe("present");
+    // Reset window key should track the previous day when before 6am
+    expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
 
     vi.useRealTimers();
   });

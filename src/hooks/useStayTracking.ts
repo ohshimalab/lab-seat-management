@@ -38,6 +38,33 @@ const formatWeekLabel = (weekKey: string) => {
   return `${toLabel(start)} - ${toLabel(end)}`;
 };
 
+const RESET_START_HOUR = 22;
+const RESET_START_MINUTE = 30;
+const RESET_END_HOUR = 6;
+
+const isWithinResetWindow = (date: Date) => {
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const isAfterStart =
+    hour > RESET_START_HOUR ||
+    (hour === RESET_START_HOUR && minute >= RESET_START_MINUTE);
+  const isBeforeEnd = hour < RESET_END_HOUR;
+  return isAfterStart || isBeforeEnd;
+};
+
+const getResetWindowKey = (date: Date) => {
+  if (!isWithinResetWindow(date)) return null;
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const isAfterStart =
+    hour > RESET_START_HOUR ||
+    (hour === RESET_START_HOUR && minute >= RESET_START_MINUTE);
+  if (isAfterStart) return formatDateKey(date);
+  const prev = new Date(date);
+  prev.setDate(prev.getDate() - 1);
+  return formatDateKey(prev);
+};
+
 const SESSIONS_KEY = "lab-stay-sessions";
 const newSessionId = () =>
   `sess-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -398,7 +425,6 @@ export function useStayTracking({
     const checkAndReset = () => {
       const now = new Date();
       const nowMs = now.getTime();
-      const todayKey = formatDateKey(now);
       const currentWeekKey = getWeekStartKey(now);
 
       if (currentWeekKey !== weekKey) {
@@ -443,8 +469,8 @@ export function useStayTracking({
         });
       }
 
-      const isAfterSix = now.getHours() >= 6;
-      if (isAfterSix && lastResetDate !== todayKey) {
+      const resetWindowKey = getResetWindowKey(now);
+      if (resetWindowKey && lastResetDate !== resetWindowKey) {
         setSessions((prev) =>
           prev.map((session) => {
             if (
@@ -457,7 +483,7 @@ export function useStayTracking({
           })
         );
         setSeatStates(createEmptySeatStates());
-        setLastResetDate(todayKey);
+        setLastResetDate(resetWindowKey);
       }
     };
 
