@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
@@ -49,7 +49,7 @@ describe("seat management - seating and clearing", () => {
     const memberButton = await screen.findByRole("button", { name: /Yamada/ });
     await user.click(memberButton);
 
-    const firstSeat = screen.getByText("R11").closest("div");
+    const firstSeat = screen.getAllByText("R11")[0].closest("div");
     expect(firstSeat).toHaveTextContent("Yamada");
   });
 
@@ -101,5 +101,110 @@ describe("seat management - seating and clearing", () => {
     screen.getByRole("button", { name: /Yamada \(2h0m\)/ });
 
     vi.useRealTimers();
+  });
+
+  it("supports drag-and-drop to move a user into an empty seat", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByText("R11"));
+    await user.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    const sourceSeat = screen.getByText("R11").closest("div") as HTMLElement;
+    const targetSeat = screen.getByText("R23").closest("div") as HTMLElement;
+    const dataTransfer = {
+      dropEffect: "none",
+      getData: vi.fn(),
+      setData: vi.fn(),
+      clearData: vi.fn(),
+      items: [],
+      types: [],
+      files: [],
+    } as unknown as DataTransfer;
+
+    fireEvent.dragStart(sourceSeat, { dataTransfer });
+    fireEvent.dragOver(targetSeat, { dataTransfer });
+    fireEvent.drop(targetSeat, { dataTransfer });
+    fireEvent.dragEnd(sourceSeat, { dataTransfer });
+
+    await waitFor(() => {
+      expect(sourceSeat).toHaveTextContent("空席");
+      expect(targetSeat).toHaveTextContent("Yamada");
+    });
+  });
+
+  it("swaps occupants when dropping onto an occupied seat", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByText("R11"));
+    await user.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    await user.click(screen.getByText("R22"));
+    await user.click(screen.getByRole("button", { name: /Tanaka/ }));
+
+    const sourceSeat = screen.getByText("R11").closest("div") as HTMLElement;
+    const targetSeat = screen.getByText("R22").closest("div") as HTMLElement;
+    const dataTransfer = {
+      dropEffect: "none",
+      getData: vi.fn(),
+      setData: vi.fn(),
+      clearData: vi.fn(),
+      items: [],
+      types: [],
+      files: [],
+    } as unknown as DataTransfer;
+
+    fireEvent.dragStart(sourceSeat, { dataTransfer });
+    fireEvent.dragOver(targetSeat, { dataTransfer });
+    fireEvent.drop(targetSeat, { dataTransfer });
+    fireEvent.dragEnd(sourceSeat, { dataTransfer });
+
+    await waitFor(() => {
+      expect(sourceSeat).toHaveTextContent("Tanaka");
+      expect(targetSeat).toHaveTextContent("Yamada");
+    });
+  });
+
+  it("exports current data and imports it back with changes", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByText("R11"));
+    await user.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    await user.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+
+    const exportArea = (await screen.findByLabelText(
+      "export-data"
+    )) as HTMLTextAreaElement;
+    const exported = JSON.parse(exportArea.value);
+    expect(exported.seatStates.R11.userId).toBe("u1");
+
+    const modified = {
+      ...exported,
+      seatStates: {
+        ...exported.seatStates,
+        R11: { userId: null, status: "present", startedAt: null },
+        R23: { userId: "u1", status: "present", startedAt: null },
+      },
+    };
+
+    const importArea = (await screen.findByLabelText(
+      "import-data"
+    )) as HTMLTextAreaElement;
+    fireEvent.change(importArea, {
+      target: { value: JSON.stringify(modified) },
+    });
+
+    await user.click(screen.getByRole("button", { name: "インポート" }));
+    await user.click(screen.getByRole("button", { name: "閉じる" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("R23").closest("div")).toHaveTextContent(
+        "Yamada"
+      );
+      expect(screen.getByText("R11").closest("div")).toHaveTextContent("空席");
+    });
   });
 });

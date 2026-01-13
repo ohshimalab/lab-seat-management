@@ -142,6 +142,21 @@ const aggregateWeekUserTotals = (sessions: StaySession[], nowMs: number) => {
   return map;
 };
 
+const computeSelectedWeekFromSessions = (
+  sessions: StaySession[],
+  nowMs: number
+) => {
+  const totals = aggregateWeekUserTotals(sessions, nowMs);
+  const available = Object.entries(totals)
+    .filter(([, weekTotals]) =>
+      Object.values(weekTotals || {}).some((value) => (value || 0) > 0)
+    )
+    .map(([key]) => key)
+    .sort();
+  if (available.length === 0) return getWeekStartKey(new Date(nowMs));
+  return available[available.length - 1];
+};
+
 interface StayTrackingParams {
   users: User[];
   seatStates: Record<string, SeatState>;
@@ -178,14 +193,7 @@ export function useStayTracking({
   const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
   const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(() => {
-    const initialTotals = aggregateWeekUserTotals(initialSessions, nowMs);
-    const available = Object.entries(initialTotals)
-      .filter(([, totals]) =>
-        Object.values(totals || {}).some((value) => (value || 0) > 0)
-      )
-      .map(([key]) => key)
-      .sort();
-    return available[available.length - 1] || initialWeekKey;
+    return computeSelectedWeekFromSessions(initialSessions, nowMs);
   });
   const [lastResetDate, setLastResetDate] = useState<string | null>(() => {
     return localStorage.getItem("lab-last-reset-date");
@@ -486,5 +494,24 @@ export function useStayTracking({
     handleNextWeek,
     handleThisWeek,
     setSelectedWeekKey,
+    lastResetDate,
+    importTrackingData: (payload: {
+      sessions?: StaySession[];
+      lastResetDate?: string | null;
+    }) => {
+      const nextSessions = Array.isArray(payload.sessions)
+        ? payload.sessions
+        : [];
+      setSessions(nextSessions);
+      const nextWeek = computeSelectedWeekFromSessions(
+        nextSessions,
+        Date.now()
+      );
+      setSelectedWeekKey(nextWeek);
+      setWeekKey(getWeekStartKey(new Date()));
+      if (payload.lastResetDate !== undefined) {
+        setLastResetDate(payload.lastResetDate);
+      }
+    },
   };
 }

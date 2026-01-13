@@ -6,6 +6,11 @@ interface SeatProps {
   currentUser: User | null;
   status: SeatStatus;
   onClick: (seatId: string) => void;
+  isDroppable?: boolean;
+  onDragStart?: (seatId: string) => void;
+  onDragOver?: (seatId: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onDrop?: (seatId: string) => void;
+  onDragEnd?: () => void;
 }
 
 export const Seat: React.FC<SeatProps> = ({
@@ -13,6 +18,11 @@ export const Seat: React.FC<SeatProps> = ({
   currentUser,
   status,
   onClick,
+  isDroppable = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) => {
   const baseStyle =
     "w-16 h-16 sm:w-20 sm:h-20 m-1.5 sm:m-2 rounded-lg flex flex-col items-center justify-center text-xs sm:text-sm font-bold shadow-md transition-transform active:scale-95 cursor-pointer";
@@ -21,10 +31,19 @@ export const Seat: React.FC<SeatProps> = ({
     : status === "away"
     ? "bg-amber-400 text-white"
     : "bg-blue-500 text-white";
+  const dropStyle = isDroppable ? "ring-2 ring-dashed ring-indigo-400" : "";
 
   return (
     <div
-      className={`${baseStyle} ${colorStyle}`}
+      className={`${baseStyle} ${colorStyle} ${dropStyle}`}
+      draggable={Boolean(currentUser)}
+      onDragStart={() => onDragStart?.(seatId)}
+      onDragOver={(event) => onDragOver?.(seatId, event)}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop?.(seatId);
+      }}
+      onDragEnd={() => onDragEnd?.()}
       onClick={() => onClick(seatId)}
     >
       <span className="opacity-70 text-xs mb-1">{seatId}</span>

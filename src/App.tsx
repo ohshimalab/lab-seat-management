@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import type React from "react";
 import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
 import { ActionModal } from "./components/ActionModal";
@@ -14,6 +15,7 @@ import type {
   UserCategory,
   SeatState,
   SeatStatus,
+  StaySession,
 } from "./types";
 
 // --- 初期レイアウト ---
@@ -126,6 +128,7 @@ function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
+  const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
 
   const seatedUserIds = useMemo(
     () =>
@@ -161,6 +164,8 @@ function App() {
     handlePrevWeek,
     handleNextWeek,
     handleThisWeek,
+    lastResetDate,
+    importTrackingData,
   } = useStayTracking({
     users,
     seatStates,
@@ -289,6 +294,84 @@ function App() {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
+  const handleSeatDragStart = (seatId: string) => {
+    if (seatStates[seatId]?.userId) setDraggingSeatId(seatId);
+  };
+
+  const handleSeatDragEnd = () => {
+    setDraggingSeatId(null);
+  };
+
+  const handleSeatDragOver = (
+    seatId: string,
+    event: React.DragEvent<HTMLDivElement>
+  ) => {
+    if (!draggingSeatId || seatId === draggingSeatId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+
+  const handleSeatDrop = (targetSeatId: string) => {
+    if (!draggingSeatId || draggingSeatId === targetSeatId) {
+      setDraggingSeatId(null);
+      return;
+    }
+
+    const sourceSeat = seatStates[draggingSeatId];
+    const targetSeat = seatStates[targetSeatId];
+    if (!sourceSeat?.userId) {
+      setDraggingSeatId(null);
+      return;
+    }
+
+    const now = Date.now();
+    const userId = sourceSeat.userId;
+
+    setSeatStates((prev) => {
+      const from = prev[draggingSeatId];
+      const to = prev[targetSeatId];
+      if (!from?.userId) return prev;
+      const next: Record<string, SeatState> = { ...prev };
+
+      // Swap if target occupied, otherwise move into empty
+      if (to?.userId) {
+        next[draggingSeatId] = {
+          userId: to.userId,
+          status: to.status || "present",
+          startedAt: now,
+        };
+        next[targetSeatId] = {
+          userId: from.userId,
+          status: from.status || "present",
+          startedAt: now,
+        };
+      } else {
+        next[draggingSeatId] = {
+          userId: null,
+          status: "present",
+          startedAt: null,
+        };
+        next[targetSeatId] = {
+          userId: from.userId,
+          status: from.status || "present",
+          startedAt: now,
+        };
+      }
+      return next;
+    });
+
+    if (targetSeat?.userId) {
+      endSession(userId, draggingSeatId, now);
+      endSession(targetSeat.userId, targetSeatId, now);
+      startSession(userId, targetSeatId, now);
+      startSession(targetSeat.userId, draggingSeatId, now);
+    } else {
+      endSession(userId, draggingSeatId, now);
+      startSession(userId, targetSeatId, now);
+    }
+    setDraggingSeatId(null);
+  };
+
   const handleReset = () => {
     if (confirm("全ての席状況をリセットしますか？")) {
       finalizeAllSeats();
@@ -300,6 +383,83 @@ function App() {
     if (!selectedSeatId) return "";
     const userId = seatStates[selectedSeatId]?.userId || null;
     return users.find((u) => u.id === userId)?.name || "";
+  };
+
+  const exportData = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          version: 1,
+          users,
+          seatStates,
+          sessions,
+          lastResetDate: lastResetDate || null,
+        },
+        null,
+        2
+      ),
+    [users, seatStates, sessions, lastResetDate]
+  );
+
+  const handleImportData = (raw: string) => {
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") {
+        return { success: false, message: "JSONが無効です" };
+      }
+
+      const validCategories: UserCategory[] = ["Staff", "D", "M", "B", "Other"];
+
+      const importedUsers: User[] = Array.isArray(
+        (parsed as { users?: unknown }).users
+      )
+        ? ((parsed as { users?: unknown }).users as User[])
+            .filter(
+              (u) => u && typeof u.id === "string" && typeof u.name === "string"
+            )
+            .map((u) => ({
+              id: u.id,
+              name: u.name,
+              category: validCategories.includes(u.category || "Other")
+                ? (u.category as UserCategory)
+                : "Other",
+            }))
+        : users;
+
+      const importedSeats = (parsed as { seatStates?: unknown }).seatStates
+        ? normalizeSeatStates((parsed as { seatStates?: unknown }).seatStates)
+        : createEmptySeatStates();
+
+      const importedSessions: StaySession[] = Array.isArray(
+        (parsed as { sessions?: unknown }).sessions
+      )
+        ? ((parsed as { sessions?: unknown }).sessions as StaySession[]).filter(
+            (s) =>
+              s &&
+              typeof s.userId === "string" &&
+              typeof s.seatId === "string" &&
+              typeof s.start === "number" &&
+              (typeof s.end === "number" || s.end === null)
+          )
+        : [];
+
+      const importedLastReset =
+        typeof (parsed as { lastResetDate?: unknown }).lastResetDate ===
+        "string"
+          ? (parsed as { lastResetDate?: string }).lastResetDate
+          : null;
+
+      setUsers(importedUsers);
+      setSeatStates(importedSeats);
+      importTrackingData({
+        sessions: importedSessions,
+        lastResetDate: importedLastReset,
+      });
+
+      return { success: true, message: "インポートが完了しました" };
+    } catch {
+      return { success: false, message: "JSONの解析に失敗しました" };
+    }
   };
 
   return (
@@ -362,6 +522,13 @@ function App() {
                       currentUser={currentUser}
                       status={seatState.status}
                       onClick={handleSeatClick}
+                      isDroppable={Boolean(
+                        draggingSeatId && draggingSeatId !== seatId
+                      )}
+                      onDragStart={handleSeatDragStart}
+                      onDragOver={handleSeatDragOver}
+                      onDrop={handleSeatDrop}
+                      onDragEnd={handleSeatDragEnd}
                     />
                   );
                 })}
@@ -412,6 +579,8 @@ function App() {
         }
         onUpdateSession={updateSession}
         onRemoveSession={removeSession}
+        exportData={exportData}
+        onImportData={handleImportData}
         onClose={() => setIsAdminModalOpen(false)}
       />
       <RandomSeatModal
