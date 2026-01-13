@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
 
@@ -38,5 +38,29 @@ describe("seat management - seating and clearing", () => {
     const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
     expect(saved.R11?.userId ?? null).toBeNull();
     expect(saved.R11?.status ?? "present").toBe("present");
+  });
+
+  it("assigns random seat and can reroll", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.99);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "🎲 ランダム着席" }));
+    const memberButton = await screen.findByRole("button", { name: "Yamada" });
+    await user.click(memberButton);
+
+    const firstSeat = screen.getByText("R11").closest("div");
+    expect(firstSeat).toHaveTextContent("Yamada");
+
+    const rerollButton = await screen.findByRole("button", {
+      name: "もう一度ランダム",
+    });
+    await user.click(rerollButton);
+
+    const updatedFirstSeat = screen.getByText("R11").closest("div");
+    expect(updatedFirstSeat).toHaveTextContent("空席");
+
+    const rerolledSeat = screen.getByText("R44").closest("div");
+    expect(rerolledSeat).toHaveTextContent("Yamada");
   });
 });

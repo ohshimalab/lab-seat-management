@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
 import { ActionModal } from "./components/ActionModal";
+import { RandomSeatModal } from "./components/RandomSeatModal";
 import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
@@ -102,6 +103,9 @@ function App() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
+  const [randomUserId, setRandomUserId] = useState<string | null>(null);
+  const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
 
   const seatedUserIds = useMemo(
     () =>
@@ -113,6 +117,11 @@ function App() {
   const availableUsers = useMemo(
     () => users.filter((user) => !seatedUserIds.includes(user.id)),
     [users, seatedUserIds]
+  );
+
+  const hasEmptySeat = useMemo(
+    () => Object.values(seatStates).some((s) => s.userId === null),
+    [seatStates]
   );
 
   const handleSeatClick = (seatId: string) => {
@@ -140,6 +149,46 @@ function App() {
     }));
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
+  };
+
+  const assignRandomSeatForUser = (user: User) => {
+    let chosenSeat: string | null = null;
+    setSeatStates((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (next[key]?.userId === user.id) {
+          next[key] = { userId: null, status: "present" };
+        }
+      });
+      const emptySeats = Object.entries(next)
+        .filter(([, value]) => value.userId === null)
+        .map(([seatId]) => seatId);
+      if (emptySeats.length === 0) return prev;
+      chosenSeat =
+        emptySeats[Math.floor(Math.random() * emptySeats.length)] || null;
+      if (!chosenSeat) return prev;
+      next[chosenSeat] = { userId: user.id, status: "present" };
+      return next;
+    });
+    setRandomUserId(user.id);
+    setRandomSeatId(chosenSeat);
+  };
+
+  const handleOpenRandom = () => {
+    setRandomUserId(null);
+    setRandomSeatId(null);
+    setIsRandomModalOpen(true);
+  };
+
+  const handleRandomSelect = (user: User) => {
+    assignRandomSeatForUser(user);
+  };
+
+  const handleRandomAgain = () => {
+    if (!randomUserId) return;
+    const targetUser = users.find((u) => u.id === randomUserId);
+    if (!targetUser) return;
+    assignRandomSeatForUser(targetUser);
   };
 
   const handleToggleAway = () => {
@@ -199,6 +248,12 @@ function App() {
           大島研究室
         </h1>
         <div className="flex gap-2 md:gap-3">
+          <button
+            onClick={handleOpenRandom}
+            className="bg-indigo-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-indigo-500 shadow-md"
+          >
+            🎲 ランダム着席
+          </button>
           <button
             onClick={handleReset}
             className="text-xs md:text-sm text-gray-400 hover:text-red-500 underline"
@@ -278,6 +333,16 @@ function App() {
         onAddUser={handleAddUser}
         onRemoveUser={handleRemoveUser}
         onClose={() => setIsAdminModalOpen(false)}
+      />
+      <RandomSeatModal
+        isOpen={isRandomModalOpen}
+        users={availableUsers}
+        selectedUserId={randomUserId}
+        assignedSeatId={randomSeatId}
+        hasAnySeat={hasEmptySeat || Boolean(randomUserId)}
+        onSelectUser={handleRandomSelect}
+        onAssignAgain={handleRandomAgain}
+        onClose={() => setIsRandomModalOpen(false)}
       />
     </div>
   );
