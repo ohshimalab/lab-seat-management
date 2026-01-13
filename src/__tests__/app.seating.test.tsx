@@ -63,4 +63,31 @@ describe("seat management - seating and clearing", () => {
     const rerolledSeat = screen.getByText("R44").closest("div");
     expect(rerolledSeat).toHaveTextContent("Yamada");
   });
+
+  it("auto resets seats at 6am", { timeout: 10000 }, async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-02T06:00:00"));
+    localStorage.setItem(
+      "lab-seat-data",
+      JSON.stringify({ R11: { userId: "u1", status: "present" } })
+    );
+    localStorage.setItem(
+      "lab-users-data",
+      JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
+    );
+    localStorage.setItem("lab-last-reset-date", "2024-01-01");
+
+    render(<App />);
+
+    await Promise.resolve();
+
+    const clearedSeat = screen.getByText("R11").closest("div");
+    expect(clearedSeat).toHaveTextContent("空席");
+
+    const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+    expect(saved.R11?.userId ?? null).toBeNull();
+    expect(saved.R11?.status ?? "present").toBe("present");
+
+    vi.useRealTimers();
+  });
 });

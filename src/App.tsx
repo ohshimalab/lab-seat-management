@@ -59,6 +59,13 @@ const normalizeSeatStates = (raw: unknown) => {
   return base;
 };
 
+const formatDateKey = (date: Date) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 function App() {
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem("lab-users-data");
@@ -75,6 +82,9 @@ function App() {
       }
     }
     return DEFAULT_USERS;
+  });
+  const [lastResetDate, setLastResetDate] = useState<string | null>(() => {
+    return localStorage.getItem("lab-last-reset-date");
   });
 
   useEffect(() => {
@@ -106,6 +116,28 @@ function App() {
   const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lastResetDate) {
+      localStorage.setItem("lab-last-reset-date", lastResetDate);
+    }
+  }, [lastResetDate]);
+
+  useEffect(() => {
+    const checkAndReset = () => {
+      const now = new Date();
+      const todayKey = formatDateKey(now);
+      const isAfterSix = now.getHours() >= 6;
+      if (isAfterSix && lastResetDate !== todayKey) {
+        setSeatStates(createEmptySeatStates());
+        setLastResetDate(todayKey);
+      }
+    };
+
+    checkAndReset();
+    const intervalId = setInterval(checkAndReset, 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [lastResetDate]);
 
   const seatedUserIds = useMemo(
     () =>
