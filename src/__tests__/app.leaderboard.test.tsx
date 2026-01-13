@@ -19,16 +19,34 @@ describe("leaderboard modal", () => {
       ])
     );
 
-    localStorage.setItem(
-      "lab-stay-data",
-      JSON.stringify({
-        weekKey: "2024-01-08",
-        data: {
-          "2024-01-08": { u1: 7200, u2: 1800 },
-          "2024-01-15": { u1: 60, u2: 3600 },
-        },
-      })
-    );
+    const sessions = [
+      {
+        userId: "u1",
+        seatId: "R11",
+        start: new Date("2024-01-08T09:00:00").getTime(),
+        end: new Date("2024-01-08T11:00:00").getTime(),
+      },
+      {
+        userId: "u2",
+        seatId: "R21",
+        start: new Date("2024-01-08T09:00:00").getTime(),
+        end: new Date("2024-01-08T09:30:00").getTime(),
+      },
+      {
+        userId: "u1",
+        seatId: "R11",
+        start: new Date("2024-01-15T09:00:00").getTime(),
+        end: new Date("2024-01-15T09:01:00").getTime(),
+      },
+      {
+        userId: "u2",
+        seatId: "R21",
+        start: new Date("2024-01-15T09:00:00").getTime(),
+        end: new Date("2024-01-15T10:00:00").getTime(),
+      },
+    ];
+
+    localStorage.setItem("lab-stay-sessions", JSON.stringify(sessions));
 
     render(<App />);
 

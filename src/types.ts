@@ -16,6 +16,13 @@ export interface SeatState {
   startedAt: number | null;
 }
 
+export interface StaySession {
+  userId: string;
+  seatId: string;
+  start: number;
+  end: number | null;
+}
+
 // 座席の型
 export interface SeatData {
   id: string;

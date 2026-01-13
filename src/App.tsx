@@ -7,6 +7,7 @@ import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
+import { useStayTracking } from "./hooks/useStayTracking";
 import type {
   User,
   SeatLayout,
@@ -68,82 +69,7 @@ const normalizeSeatStates = (raw: unknown) => {
   return base;
 };
 
-const formatDateKey = (date: Date) => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-const getWeekStartKey = (date: Date) => {
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Monday-based week start
-  const weekStart = new Date(date);
-  weekStart.setHours(0, 0, 0, 0);
-  weekStart.setDate(weekStart.getDate() + diff);
-  return formatDateKey(weekStart);
-};
-
-const formatStayDuration = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return hours > 0 ? `${hours}h${mins}m` : `${mins}m`;
-};
-
-const formatWeekLabel = (weekKey: string) => {
-  const start = new Date(`${weekKey}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  const toLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-  return `${toLabel(start)} - ${toLabel(end)}`;
-};
-
-const loadStayData = () => {
-  const current = getWeekStartKey(new Date());
-  const fallback = {
-    weekKey: current,
-    data: {} as Record<string, Record<string, number>>,
-  };
-  const raw = localStorage.getItem("lab-stay-data");
-  if (!raw) return fallback;
-  try {
-    const parsed = JSON.parse(raw) as
-      | { weekKey: string; data: Record<string, Record<string, number>> }
-      | { weekKey: string; totals: Record<string, number> };
-    if ("data" in parsed && parsed.data) {
-      return {
-        weekKey: parsed.weekKey || current,
-        data: parsed.data,
-      };
-    }
-    if ("totals" in parsed && parsed.weekKey) {
-      return {
-        weekKey: parsed.weekKey,
-        data: { [parsed.weekKey]: parsed.totals },
-      };
-    }
-    return fallback;
-  } catch {
-    return fallback;
-  }
-};
-
 function App() {
-  const initialStay = loadStayData();
-  const initialSelectedWeekKey = (() => {
-    const totals: Record<string, number> = {};
-    Object.entries(initialStay.data).forEach(([key, vals]) => {
-      totals[key] = Object.values(vals || {}).reduce(
-        (acc, value) => acc + (value || 0),
-        0
-      );
-    });
-    const available = Object.keys(totals)
-      .filter((key) => totals[key] > 0)
-      .sort();
-    return available[available.length - 1] || initialStay.weekKey;
-  })();
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem("lab-users-data");
     if (saved) {
@@ -159,9 +85,6 @@ function App() {
       }
     }
     return DEFAULT_USERS;
-  });
-  const [lastResetDate, setLastResetDate] = useState<string | null>(() => {
-    return localStorage.getItem("lab-last-reset-date");
   });
 
   useEffect(() => {
@@ -186,28 +109,9 @@ function App() {
     localStorage.setItem("lab-seat-data", JSON.stringify(seatStates));
   }, [seatStates]);
 
-  const addStayDuration = (userId: string, startedAt: number | null) => {
-    if (!startedAt) return;
-    const elapsedSeconds = Math.max(
-      0,
-      Math.floor((Date.now() - startedAt) / 1000)
-    );
-    if (elapsedSeconds === 0) return;
-    setStayHistory((prev) => {
-      const weekTotals = prev[weekKey] || {};
-      return {
-        ...prev,
-        [weekKey]: {
-          ...weekTotals,
-          [userId]: (weekTotals[userId] || 0) + elapsedSeconds,
-        },
-      };
-    });
-  };
-
   const finalizeSeatOccupant = (seatId: string) => {
     const seat = seatStates[seatId];
-    if (seat?.userId) addStayDuration(seat.userId, seat.startedAt);
+    if (seat?.userId) endSession(seat.userId, seatId, Date.now());
   };
 
   const finalizeAllSeats = () => {
@@ -222,77 +126,6 @@ function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
-  const [weekKey, setWeekKey] = useState<string>(initialStay.weekKey);
-  const [selectedWeekKey, setSelectedWeekKey] = useState<string>(
-    initialSelectedWeekKey
-  );
-  const [stayHistory, setStayHistory] = useState<
-    Record<string, Record<string, number>>
-  >(() => initialStay.data);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lab-stay-data",
-      JSON.stringify({ weekKey, data: stayHistory })
-    );
-  }, [stayHistory, weekKey]);
-
-  useEffect(() => {
-    setStayHistory((prev) => ({
-      ...prev,
-      [weekKey]: prev[weekKey] || {},
-    }));
-  }, [weekKey]);
-
-  useEffect(() => {
-    if (lastResetDate) {
-      localStorage.setItem("lab-last-reset-date", lastResetDate);
-    }
-  }, [lastResetDate]);
-
-  useEffect(() => {
-    const checkAndReset = () => {
-      const now = new Date();
-      const todayKey = formatDateKey(now);
-      const currentWeekKey = getWeekStartKey(now);
-
-      if (currentWeekKey !== weekKey) {
-        setWeekKey(currentWeekKey);
-        setStayHistory((prev) => ({
-          ...prev,
-          [currentWeekKey]: prev[currentWeekKey] || {},
-        }));
-        setSeatStates((prev) => {
-          const next = { ...prev };
-          Object.keys(next).forEach((seatId) => {
-            const seat = next[seatId];
-            if (seat?.userId) {
-              next[seatId] = {
-                ...seat,
-                startedAt: now.getTime(),
-                status: seat.status || "present",
-              } as SeatState;
-            }
-          });
-          return next;
-        });
-      }
-
-      const isAfterSix = now.getHours() >= 6;
-      if (isAfterSix && lastResetDate !== todayKey) {
-        Object.keys(seatStates).forEach((seatId) => {
-          const seat = seatStates[seatId];
-          if (seat?.userId) addStayDuration(seat.userId, seat.startedAt);
-        });
-        setSeatStates(createEmptySeatStates());
-        setLastResetDate(todayKey);
-      }
-    };
-
-    checkAndReset();
-    const intervalId = setInterval(checkAndReset, 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, [lastResetDate, weekKey, seatStates]);
 
   const seatedUserIds = useMemo(
     () =>
@@ -311,89 +144,25 @@ function App() {
     [seatStates]
   );
 
-  const stayDurationDisplay = useMemo(() => {
-    const map: Record<string, string> = {};
-    const currentTotals = stayHistory[weekKey] || {};
-    users.forEach((user) => {
-      const seconds = currentTotals[user.id] || 0;
-      map[user.id] = formatStayDuration(seconds);
-    });
-    return map;
-  }, [users, stayHistory, weekKey]);
-
-  const liveCurrentWeekSeconds = (() => {
-    const now = Date.now();
-    const live: Record<string, number> = {};
-    Object.values(seatStates).forEach((seat) => {
-      if (!seat?.userId || !seat.startedAt) return;
-      const elapsed = Math.max(0, Math.floor((now - seat.startedAt) / 1000));
-      if (elapsed === 0) return;
-      live[seat.userId] = (live[seat.userId] || 0) + elapsed;
-    });
-    return live;
-  })();
-
-  const selectedWeekTotals = useMemo(() => {
-    const base = stayHistory[selectedWeekKey] || {};
-    if (selectedWeekKey !== weekKey) return base;
-    const merged: Record<string, number> = { ...base };
-    Object.entries(liveCurrentWeekSeconds).forEach(([userId, live]) => {
-      merged[userId] = (merged[userId] || 0) + live;
-    });
-    return merged;
-  }, [stayHistory, selectedWeekKey, weekKey, liveCurrentWeekSeconds]);
-
-  const weekTotals = useMemo(() => {
-    const map: Record<string, number> = {};
-    Object.entries(stayHistory).forEach(([key, totals]) => {
-      const sum = Object.values(totals || {}).reduce(
-        (acc, value) => acc + (value || 0),
-        0
-      );
-      map[key] = sum;
-    });
-    const liveSum = Object.values(liveCurrentWeekSeconds).reduce(
-      (acc, value) => acc + value,
-      0
-    );
-    map[weekKey] = (map[weekKey] || 0) + liveSum;
-    return map;
-  }, [stayHistory, liveCurrentWeekSeconds, weekKey]);
-
-  const leaderboardRows = useMemo(() => {
-    const rows = users.map((user) => {
-      const seconds = selectedWeekTotals[user.id] || 0;
-      return {
-        userId: user.id,
-        name: user.name,
-        seconds,
-        formatted: formatStayDuration(seconds),
-      };
-    });
-    rows.sort((a, b) => {
-      if (a.seconds === b.seconds) return a.name.localeCompare(b.name);
-      return b.seconds - a.seconds;
-    });
-    return rows;
-  }, [users, selectedWeekTotals]);
-
-  const sortedWeekKeys = useMemo(() => {
-    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
-    keys.sort();
-    return keys;
-  }, [weekTotals]);
-
-  const selectedWeekLabel = useMemo(
-    () => formatWeekLabel(selectedWeekKey),
-    [selectedWeekKey]
-  );
-
-  const currentIndex = sortedWeekKeys.indexOf(selectedWeekKey);
-  const disablePrevWeek = currentIndex <= 0;
-  const disableNextWeek =
-    currentIndex === -1 || currentIndex >= sortedWeekKeys.length - 1;
-  const thisWeekKey = getWeekStartKey(new Date());
-  const disableThisWeek = !sortedWeekKeys.includes(thisWeekKey);
+  const {
+    selectedWeekLabel,
+    selectedWeekTotalFormatted,
+    leaderboardRows,
+    disablePrevWeek,
+    disableNextWeek,
+    disableThisWeek,
+    stayDurationDisplay,
+    startSession,
+    endSession,
+    handlePrevWeek,
+    handleNextWeek,
+    handleThisWeek,
+  } = useStayTracking({
+    users,
+    seatStates,
+    setSeatStates,
+    createEmptySeatStates,
+  });
 
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
@@ -415,14 +184,16 @@ function App() {
 
   const handleUserSelect = (user: User) => {
     if (!selectedSeatId) return;
+    const now = Date.now();
     setSeatStates((prev) => ({
       ...prev,
       [selectedSeatId]: {
         userId: user.id,
         status: "present",
-        startedAt: Date.now(),
+        startedAt: now,
       },
     }));
+    startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
   };
@@ -432,7 +203,7 @@ function App() {
     const currentSeatId = Object.entries(seatStates).find(
       ([, value]) => value.userId === user.id
     )?.[0];
-    if (currentSeatId) finalizeSeatOccupant(currentSeatId);
+    if (currentSeatId) endSession(user.id, currentSeatId, now);
 
     let chosenSeat: string | null = null;
     setSeatStates((prev) => {
@@ -456,6 +227,7 @@ function App() {
       };
       return next;
     });
+    if (chosenSeat) startSession(user.id, chosenSeat, now);
     setRandomUserId(user.id);
     setRandomSeatId(chosenSeat);
   };
@@ -499,7 +271,7 @@ function App() {
   const handleRemoveUser = (userId: string) => {
     Object.keys(seatStates).forEach((seatId) => {
       const seat = seatStates[seatId];
-      if (seat?.userId === userId) addStayDuration(userId, seat.startedAt);
+      if (seat?.userId === userId) endSession(userId, seatId, Date.now());
     });
     setSeatStates((prev) => {
       const next = { ...prev };
@@ -518,28 +290,6 @@ function App() {
       finalizeAllSeats();
       setSeatStates(createEmptySeatStates());
     }
-  };
-
-  const handlePrevWeek = () => {
-    setSelectedWeekKey((prev) => {
-      const idx = sortedWeekKeys.indexOf(prev);
-      if (idx <= 0) return prev;
-      return sortedWeekKeys[idx - 1];
-    });
-  };
-
-  const handleNextWeek = () => {
-    setSelectedWeekKey((prev) => {
-      const idx = sortedWeekKeys.indexOf(prev);
-      if (idx === -1 || idx >= sortedWeekKeys.length - 1) return prev;
-      return sortedWeekKeys[idx + 1];
-    });
-  };
-
-  const handleThisWeek = () => {
-    const current = getWeekStartKey(new Date());
-    if (!sortedWeekKeys.includes(current)) return;
-    setSelectedWeekKey(current);
   };
 
   const getSelectedUserName = () => {
