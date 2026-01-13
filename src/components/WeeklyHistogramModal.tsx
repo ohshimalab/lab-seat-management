@@ -18,13 +18,20 @@ interface WeekBar {
   isSelected: boolean;
 }
 
+interface UserBar {
+  key: string;
+  label: string;
+  totalSeconds: number;
+  formatted: string;
+  isSelected: boolean;
+}
+
 interface Props {
   isOpen: boolean;
   weeks: WeekBar[];
-  maxSeconds: number;
+  userBars: UserBar[];
   selectedWeekLabel: string;
   selectedWeekTotal: string;
-  onSelectWeek: (weekKey: string) => void;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
@@ -37,10 +44,9 @@ interface Props {
 export const WeeklyHistogramModal: React.FC<Props> = ({
   isOpen,
   weeks,
-  maxSeconds,
+  userBars,
   selectedWeekLabel,
   selectedWeekTotal,
-  onSelectWeek,
   onPrevWeek,
   onNextWeek,
   onThisWeek,
@@ -63,14 +69,14 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
 
   const chartData: ChartDatum[] = useMemo(
     () =>
-      weeks.map((week) => ({
-        key: week.weekKey,
-        label: week.label,
-        total: week.totalSeconds,
-        formatted: week.formatted,
-        isSelected: week.isSelected,
+      userBars.map((bar) => ({
+        key: bar.key,
+        label: bar.label,
+        total: bar.totalSeconds,
+        formatted: bar.formatted,
+        isSelected: bar.isSelected,
       })),
-    [weeks]
+    [userBars]
   );
 
   const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
@@ -201,7 +207,6 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
                       fill={entry.isSelected ? "#10b981" : "#a7f3d0"}
                       stroke={entry.isSelected ? "#059669" : "#6ee7b7"}
                       strokeWidth={entry.isSelected ? 2 : 1}
-                      onClick={() => onSelectWeek(entry.key)}
                     />
                   ))}
                 </Bar>

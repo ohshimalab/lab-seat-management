@@ -419,13 +419,24 @@ function App() {
     });
   }, [sortedWeekKeys, weekTotals, selectedWeekKey]);
 
-  const histogramMaxSeconds = useMemo(() => {
-    const max = histogramWeeks.reduce(
-      (acc, w) => Math.max(acc, w.totalSeconds),
-      0
-    );
-    return Math.max(max, 1);
-  }, [histogramWeeks]);
+  const histogramUserBars = useMemo(() => {
+    const rows = users.map((user) => {
+      const seconds = selectedWeekTotals[user.id] || 0;
+      return {
+        key: user.id,
+        label: user.name,
+        totalSeconds: seconds,
+        formatted: formatStayDuration(seconds),
+        isSelected: false,
+      };
+    });
+    rows.sort((a, b) => {
+      if (a.totalSeconds === b.totalSeconds)
+        return a.label.localeCompare(b.label);
+      return b.totalSeconds - a.totalSeconds;
+    });
+    return rows;
+  }, [users, selectedWeekTotals]);
 
   const selectedWeekTotalFormatted = formatStayDuration(
     Object.values(selectedWeekTotals).reduce((acc, v) => acc + v, 0)
@@ -578,11 +589,6 @@ function App() {
     setSelectedWeekKey(current);
   };
 
-  const handleSelectWeek = (key: string) => {
-    if (!sortedWeekKeys.includes(key)) return;
-    setSelectedWeekKey(key);
-  };
-
   const getSelectedUserName = () => {
     if (!selectedSeatId) return "";
     const userId = seatStates[selectedSeatId]?.userId || null;
@@ -722,10 +728,9 @@ function App() {
       <WeeklyHistogramModal
         isOpen={isHistogramOpen}
         weeks={histogramWeeks}
-        maxSeconds={histogramMaxSeconds}
+        userBars={histogramUserBars}
         selectedWeekLabel={selectedWeekLabel}
         selectedWeekTotal={selectedWeekTotalFormatted}
-        onSelectWeek={handleSelectWeek}
         onPrevWeek={handlePrevWeek}
         onNextWeek={handleNextWeek}
         onThisWeek={handleThisWeek}
