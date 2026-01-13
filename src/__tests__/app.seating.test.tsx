@@ -196,6 +196,38 @@ describe("seat management - seating and clearing", () => {
     }
   );
 
+  it("resets all seats manually and closes open sessions", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByText("R11"));
+    await user.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const beforeReset = Date.now();
+
+    await user.click(screen.getByRole("button", { name: "全席リセット" }));
+    confirmSpy.mockRestore();
+
+    await waitFor(() => {
+      expect(screen.getByText("R11").closest("div")).toHaveTextContent(
+        "空席"
+      );
+    });
+
+    const savedSeats = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+    expect(savedSeats.R11.userId).toBeNull();
+    expect(savedSeats.R11.status).toBe("present");
+    expect(savedSeats.R11.startedAt).toBeNull();
+
+    const sessions = JSON.parse(localStorage.getItem("lab-stay-sessions") || "[]");
+    expect(sessions.length).toBeGreaterThan(0);
+    const last = sessions[sessions.length - 1];
+    expect(last.end).not.toBeNull();
+    expect(last.end).toBeGreaterThanOrEqual(beforeReset);
+    expect(last.start).toBeLessThan(last.end);
+  });
+
   it("supports drag-and-drop to move a user into an empty seat", async () => {
     const user = userEvent.setup();
     render(<App />);
