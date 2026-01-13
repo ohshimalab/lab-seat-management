@@ -1,4 +1,14 @@
-import React from "react";
+import React, { useMemo } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Tooltip,
+  TooltipProps,
+  XAxis,
+  LabelList,
+} from "recharts";
 
 interface WeekBar {
   weekKey: string;
@@ -42,6 +52,37 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   const empty = weeks.length === 0;
+
+  type ChartDatum = {
+    key: string;
+    label: string;
+    total: number;
+    formatted: string;
+    isSelected: boolean;
+  };
+
+  const chartData: ChartDatum[] = useMemo(
+    () =>
+      weeks.map((week) => ({
+        key: week.weekKey,
+        label: week.label,
+        total: week.totalSeconds,
+        formatted: week.formatted,
+        isSelected: week.isSelected,
+      })),
+    [weeks]
+  );
+
+  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const item = payload[0].payload as ChartDatum;
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm">
+        <div className="font-semibold text-gray-800">{item.label}</div>
+        <div className="text-gray-600">合計 {item.formatted}</div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
@@ -102,35 +143,69 @@ export const WeeklyHistogramModal: React.FC<Props> = ({
               データがありません
             </div>
           ) : (
-            <div className="h-64 flex items-end gap-3 px-2" role="list">
-              {weeks.map((week) => {
-                const ratio = Math.max(0, week.totalSeconds) / maxSeconds;
-                const heightPercent = Math.max(6, Math.round(ratio * 100));
-                return (
-                  <button
-                    key={week.weekKey}
-                    onClick={() => onSelectWeek(week.weekKey)}
-                    role="listitem"
-                    className={`flex flex-col items-center justify-end gap-2 flex-1 min-w-[80px] p-2 rounded-lg border transition-all ${
-                      week.isSelected
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                    }`}
-                    aria-label={`${week.label} ${week.formatted}`}
-                  >
-                    <div
-                      className="w-full bg-emerald-500 rounded-t-md"
-                      style={{ height: `${heightPercent}%` }}
+            <div className="h-64 px-2 overflow-x-auto">
+              <BarChart
+                width={Math.max(chartData.length * 110, 640)}
+                height={256}
+                data={chartData}
+                margin={{ top: 10, right: 12, left: 0, bottom: 10 }}
+                barCategoryGap={16}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#e5e7eb"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "#4b5563" }}
+                  interval={0}
+                  height={32}
+                />
+                <Tooltip
+                  content={<CustomTooltip />}
+                  cursor={{ fill: "rgba(16,185,129,0.08)" }}
+                />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                  <LabelList
+                    dataKey="formatted"
+                    position="top"
+                    content={(props) => {
+                      const { x, y, width, value } = props;
+                      if (
+                        value == null ||
+                        x == null ||
+                        y == null ||
+                        width == null
+                      )
+                        return null;
+                      const centerX = x + width / 2;
+                      return (
+                        <text
+                          x={centerX}
+                          y={y - 6}
+                          textAnchor="middle"
+                          fill="#1f2937"
+                          fontSize={11}
+                          fontWeight={700}
+                        >
+                          {value as string}
+                        </text>
+                      );
+                    }}
+                  />
+                  {chartData.map((entry) => (
+                    <Cell
+                      key={entry.key}
+                      cursor="pointer"
+                      fill={entry.isSelected ? "#10b981" : "#a7f3d0"}
+                      stroke={entry.isSelected ? "#059669" : "#6ee7b7"}
+                      strokeWidth={entry.isSelected ? 2 : 1}
+                      onClick={() => onSelectWeek(entry.key)}
                     />
-                    <div className="text-sm font-mono font-bold text-gray-800">
-                      {week.formatted}
-                    </div>
-                    <div className="text-[11px] text-gray-600 text-center leading-tight">
-                      {week.label}
-                    </div>
-                  </button>
-                );
-              })}
+                  ))}
+                </Bar>
+              </BarChart>
             </div>
           )}
         </div>
