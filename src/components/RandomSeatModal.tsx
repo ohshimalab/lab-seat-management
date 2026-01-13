@@ -7,6 +7,7 @@ interface Props {
   selectedUserId: string | null;
   assignedSeatId: string | null;
   hasAnySeat: boolean;
+  stayDurations: Record<string, string>;
   onSelectUser: (user: User) => void;
   onClose: () => void;
 }
@@ -25,6 +26,7 @@ export const RandomSeatModal: React.FC<Props> = ({
   selectedUserId,
   assignedSeatId,
   hasAnySeat,
+  stayDurations,
   onSelectUser,
   onClose,
 }) => {
@@ -91,7 +93,7 @@ export const RandomSeatModal: React.FC<Props> = ({
                         disabledSelect ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
-                      {user.name}
+                      {user.name} ({stayDurations[user.id] || "0m"})
                     </button>
                   ))}
                 </div>

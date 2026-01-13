@@ -13,6 +13,7 @@ export type SeatStatus = "present" | "away";
 export interface SeatState {
   userId: string | null;
   status: SeatStatus;
+  startedAt: number | null;
 }
 
 // 座席の型

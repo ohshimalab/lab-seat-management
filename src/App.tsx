@@ -6,6 +6,7 @@ import { RandomSeatModal } from "./components/RandomSeatModal";
 import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
+import { LeaderboardModal } from "./components/LeaderboardModal";
 import type {
   User,
   SeatLayout,
@@ -31,7 +32,7 @@ const createEmptySeatStates = () => {
   const base: Record<string, SeatState> = {};
   INITIAL_LAYOUT.forEach((row) => {
     row.seats.forEach((seatId) => {
-      base[seatId] = { userId: null, status: "present" };
+      base[seatId] = { userId: null, status: "present", startedAt: null };
     });
   });
   return base;
@@ -44,7 +45,11 @@ const normalizeSeatStates = (raw: unknown) => {
   Object.keys(base).forEach((seatId) => {
     const value = saved[seatId];
     if (typeof value === "string" || value === null) {
-      base[seatId] = { userId: value as string | null, status: "present" };
+      base[seatId] = {
+        userId: value as string | null,
+        status: "present",
+        startedAt: null,
+      };
       return;
     }
     if (value && typeof value === "object") {
@@ -53,7 +58,11 @@ const normalizeSeatStates = (raw: unknown) => {
         typeof candidate.userId === "string" ? candidate.userId : null;
       const status: SeatStatus =
         candidate.status === "away" ? "away" : "present";
-      base[seatId] = { userId, status };
+      const startedAt =
+        typeof (candidate as { startedAt?: unknown }).startedAt === "number"
+          ? (candidate as { startedAt?: number }).startedAt
+          : null;
+      base[seatId] = { userId, status, startedAt };
     }
   });
   return base;
@@ -66,7 +75,62 @@ const formatDateKey = (date: Date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const getWeekStartKey = (date: Date) => {
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday-based week start
+  const weekStart = new Date(date);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() + diff);
+  return formatDateKey(weekStart);
+};
+
+const formatStayDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return hours > 0 ? `${hours}h${mins}m` : `${mins}m`;
+};
+
+const formatWeekLabel = (weekKey: string) => {
+  const start = new Date(`${weekKey}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const toLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${toLabel(start)} - ${toLabel(end)}`;
+};
+
+const loadStayData = () => {
+  const current = getWeekStartKey(new Date());
+  const fallback = {
+    weekKey: current,
+    data: {} as Record<string, Record<string, number>>,
+  };
+  const raw = localStorage.getItem("lab-stay-data");
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as
+      | { weekKey: string; data: Record<string, Record<string, number>> }
+      | { weekKey: string; totals: Record<string, number> };
+    if ("data" in parsed && parsed.data) {
+      return {
+        weekKey: parsed.weekKey || current,
+        data: parsed.data,
+      };
+    }
+    if ("totals" in parsed && parsed.weekKey) {
+      return {
+        weekKey: parsed.weekKey,
+        data: { [parsed.weekKey]: parsed.totals },
+      };
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 function App() {
+  const initialStay = loadStayData();
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem("lab-users-data");
     if (saved) {
@@ -109,13 +173,63 @@ function App() {
     localStorage.setItem("lab-seat-data", JSON.stringify(seatStates));
   }, [seatStates]);
 
+  const addStayDuration = (userId: string, startedAt: number | null) => {
+    if (!startedAt) return;
+    const elapsedSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - startedAt) / 1000)
+    );
+    if (elapsedSeconds === 0) return;
+    setStayHistory((prev) => {
+      const weekTotals = prev[weekKey] || {};
+      return {
+        ...prev,
+        [weekKey]: {
+          ...weekTotals,
+          [userId]: (weekTotals[userId] || 0) + elapsedSeconds,
+        },
+      };
+    });
+  };
+
+  const finalizeSeatOccupant = (seatId: string) => {
+    const seat = seatStates[seatId];
+    if (seat?.userId) addStayDuration(seat.userId, seat.startedAt);
+  };
+
+  const finalizeAllSeats = () => {
+    Object.keys(seatStates).forEach((seatId) => finalizeSeatOccupant(seatId));
+  };
+
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
+  const [weekKey, setWeekKey] = useState<string>(initialStay.weekKey);
+  const [selectedWeekKey, setSelectedWeekKey] = useState<string>(
+    initialStay.weekKey
+  );
+  const [stayHistory, setStayHistory] = useState<
+    Record<string, Record<string, number>>
+  >(() => initialStay.data);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "lab-stay-data",
+      JSON.stringify({ weekKey, data: stayHistory })
+    );
+  }, [stayHistory, weekKey]);
+
+  useEffect(() => {
+    setStayHistory((prev) => ({
+      ...prev,
+      [weekKey]: prev[weekKey] || {},
+    }));
+  }, [weekKey]);
 
   useEffect(() => {
     if (lastResetDate) {
@@ -127,8 +241,36 @@ function App() {
     const checkAndReset = () => {
       const now = new Date();
       const todayKey = formatDateKey(now);
+      const currentWeekKey = getWeekStartKey(now);
+
+      if (currentWeekKey !== weekKey) {
+        setWeekKey(currentWeekKey);
+        setStayHistory((prev) => ({
+          ...prev,
+          [currentWeekKey]: prev[currentWeekKey] || {},
+        }));
+        setSeatStates((prev) => {
+          const next = { ...prev };
+          Object.keys(next).forEach((seatId) => {
+            const seat = next[seatId];
+            if (seat?.userId) {
+              next[seatId] = {
+                ...seat,
+                startedAt: now.getTime(),
+                status: seat.status || "present",
+              } as SeatState;
+            }
+          });
+          return next;
+        });
+      }
+
       const isAfterSix = now.getHours() >= 6;
       if (isAfterSix && lastResetDate !== todayKey) {
+        Object.keys(seatStates).forEach((seatId) => {
+          const seat = seatStates[seatId];
+          if (seat?.userId) addStayDuration(seat.userId, seat.startedAt);
+        });
         setSeatStates(createEmptySeatStates());
         setLastResetDate(todayKey);
       }
@@ -137,7 +279,7 @@ function App() {
     checkAndReset();
     const intervalId = setInterval(checkAndReset, 60 * 1000);
     return () => clearInterval(intervalId);
-  }, [lastResetDate]);
+  }, [lastResetDate, weekKey, seatStates]);
 
   const seatedUserIds = useMemo(
     () =>
@@ -156,6 +298,64 @@ function App() {
     [seatStates]
   );
 
+  const stayDurationDisplay = useMemo(() => {
+    const map: Record<string, string> = {};
+    const currentTotals = stayHistory[weekKey] || {};
+    users.forEach((user) => {
+      const seconds = currentTotals[user.id] || 0;
+      map[user.id] = formatStayDuration(seconds);
+    });
+    return map;
+  }, [users, stayHistory, weekKey]);
+
+  const selectedWeekTotals = useMemo(
+    () => stayHistory[selectedWeekKey] || {},
+    [stayHistory, selectedWeekKey]
+  );
+
+  const sortedWeekKeys = useMemo(() => {
+    const keys = Array.from(
+      new Set([...Object.keys(stayHistory), weekKey, selectedWeekKey])
+    );
+    return keys.sort();
+  }, [stayHistory, weekKey, selectedWeekKey]);
+
+  useEffect(() => {
+    if (
+      !sortedWeekKeys.includes(selectedWeekKey) &&
+      sortedWeekKeys.length > 0
+    ) {
+      setSelectedWeekKey(sortedWeekKeys[sortedWeekKeys.length - 1]);
+    }
+  }, [sortedWeekKeys, selectedWeekKey]);
+
+  const leaderboardRows = useMemo(() => {
+    const rows = users.map((user) => {
+      const seconds = selectedWeekTotals[user.id] || 0;
+      return {
+        userId: user.id,
+        name: user.name,
+        seconds,
+        formatted: formatStayDuration(seconds),
+      };
+    });
+    rows.sort((a, b) => {
+      if (a.seconds === b.seconds) return a.name.localeCompare(b.name);
+      return b.seconds - a.seconds;
+    });
+    return rows;
+  }, [users, selectedWeekTotals]);
+
+  const selectedWeekLabel = useMemo(
+    () => formatWeekLabel(selectedWeekKey),
+    [selectedWeekKey]
+  );
+
+  const currentIndex = sortedWeekKeys.indexOf(selectedWeekKey);
+  const disablePrevWeek = currentIndex <= 0;
+  const disableNextWeek =
+    currentIndex === -1 || currentIndex >= sortedWeekKeys.length - 1;
+
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
     setSelectedSeatId(seatId);
@@ -165,9 +365,10 @@ function App() {
 
   const handleLeaveSeat = () => {
     if (!selectedSeatId) return;
+    finalizeSeatOccupant(selectedSeatId);
     setSeatStates((prev) => ({
       ...prev,
-      [selectedSeatId]: { userId: null, status: "present" },
+      [selectedSeatId]: { userId: null, status: "present", startedAt: null },
     }));
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
@@ -177,19 +378,29 @@ function App() {
     if (!selectedSeatId) return;
     setSeatStates((prev) => ({
       ...prev,
-      [selectedSeatId]: { userId: user.id, status: "present" },
+      [selectedSeatId]: {
+        userId: user.id,
+        status: "present",
+        startedAt: Date.now(),
+      },
     }));
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
   };
 
   const assignRandomSeatForUser = (user: User) => {
+    const now = Date.now();
+    const currentSeatId = Object.entries(seatStates).find(
+      ([, value]) => value.userId === user.id
+    )?.[0];
+    if (currentSeatId) finalizeSeatOccupant(currentSeatId);
+
     let chosenSeat: string | null = null;
     setSeatStates((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
         if (next[key]?.userId === user.id) {
-          next[key] = { userId: null, status: "present" };
+          next[key] = { userId: null, status: "present", startedAt: null };
         }
       });
       const emptySeats = Object.entries(next)
@@ -199,7 +410,11 @@ function App() {
       chosenSeat =
         emptySeats[Math.floor(Math.random() * emptySeats.length)] || null;
       if (!chosenSeat) return prev;
-      next[chosenSeat] = { userId: user.id, status: "present" };
+      next[chosenSeat] = {
+        userId: user.id,
+        status: "present",
+        startedAt: now,
+      };
       return next;
     });
     setRandomUserId(user.id);
@@ -243,11 +458,15 @@ function App() {
   };
 
   const handleRemoveUser = (userId: string) => {
+    Object.keys(seatStates).forEach((seatId) => {
+      const seat = seatStates[seatId];
+      if (seat?.userId === userId) addStayDuration(userId, seat.startedAt);
+    });
     setSeatStates((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
         if (next[key]?.userId === userId) {
-          next[key] = { userId: null, status: "present" };
+          next[key] = { userId: null, status: "present", startedAt: null };
         }
       });
       return next;
@@ -256,8 +475,36 @@ function App() {
   };
 
   const handleReset = () => {
-    if (confirm("全ての席状況をリセットしますか？"))
+    if (confirm("全ての席状況をリセットしますか？")) {
+      finalizeAllSeats();
       setSeatStates(createEmptySeatStates());
+    }
+  };
+
+  const handlePrevWeek = () => {
+    setSelectedWeekKey((prev) => {
+      const idx = sortedWeekKeys.indexOf(prev);
+      if (idx <= 0) return prev;
+      return sortedWeekKeys[idx - 1];
+    });
+  };
+
+  const handleNextWeek = () => {
+    setSelectedWeekKey((prev) => {
+      const idx = sortedWeekKeys.indexOf(prev);
+      if (idx === -1 || idx >= sortedWeekKeys.length - 1) return prev;
+      return sortedWeekKeys[idx + 1];
+    });
+  };
+
+  const handleThisWeek = () => {
+    const current = getWeekStartKey(new Date());
+    setWeekKey(current);
+    setSelectedWeekKey(current);
+    setStayHistory((prev) => ({
+      ...prev,
+      [current]: prev[current] || {},
+    }));
   };
 
   const getSelectedUserName = () => {
@@ -273,6 +520,12 @@ function App() {
           大島研究室
         </h1>
         <div className="flex gap-2 md:gap-3">
+          <button
+            onClick={() => setIsLeaderboardOpen(true)}
+            className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
+          >
+            🏆 滞在ランキング
+          </button>
           <button
             onClick={handleOpenRandom}
             className="bg-indigo-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-indigo-500 shadow-md"
@@ -308,6 +561,7 @@ function App() {
                   const seatState = seatStates[seatId] || {
                     userId: null,
                     status: "present" as SeatStatus,
+                    startedAt: null,
                   };
                   const currentUser = seatState.userId
                     ? users.find((u) => u.id === seatState.userId) || null
@@ -338,6 +592,7 @@ function App() {
       <UserSelectModal
         isOpen={isUserModalOpen}
         users={availableUsers}
+        stayDurations={stayDurationDisplay}
         onSelect={handleUserSelect}
         onClose={() => setIsUserModalOpen(false)}
       />
@@ -365,8 +620,21 @@ function App() {
         selectedUserId={randomUserId}
         assignedSeatId={randomSeatId}
         hasAnySeat={hasEmptySeat || Boolean(randomUserId)}
+        stayDurations={stayDurationDisplay}
         onSelectUser={handleRandomSelect}
         onClose={() => setIsRandomModalOpen(false)}
+      />
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        weekLabel={selectedWeekLabel}
+        rows={leaderboardRows}
+        users={users}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onThisWeek={handleThisWeek}
+        disablePrevWeek={disablePrevWeek}
+        disableNextWeek={disableNextWeek}
+        onClose={() => setIsLeaderboardOpen(false)}
       />
     </div>
   );

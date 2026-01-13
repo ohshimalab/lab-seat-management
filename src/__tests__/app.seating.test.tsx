@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
@@ -14,7 +14,7 @@ describe("seat management - seating and clearing", () => {
 
     // Seat someone in R11
     await user.click(screen.getByText("R11"));
-    const memberButton = await screen.findByRole("button", { name: "Yamada" });
+    const memberButton = screen.getByRole("button", { name: /Yamada/ });
     await user.click(memberButton);
 
     // Seat shows the assigned user
@@ -46,7 +46,7 @@ describe("seat management - seating and clearing", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "🎲 ランダム着席" }));
-    const memberButton = await screen.findByRole("button", { name: "Yamada" });
+    const memberButton = await screen.findByRole("button", { name: /Yamada/ });
     await user.click(memberButton);
 
     const firstSeat = screen.getByText("R11").closest("div");
@@ -76,6 +76,29 @@ describe("seat management - seating and clearing", () => {
     const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
     expect(saved.R11?.userId ?? null).toBeNull();
     expect(saved.R11?.status ?? "present").toBe("present");
+
+    vi.useRealTimers();
+  });
+
+  it("tracks weekly stay duration and shows it in selection", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-08T09:00:00"));
+    render(<App />);
+
+    fireEvent.click(screen.getByText("R11"));
+    const memberButton = screen.getByRole("button", { name: /Yamada/ });
+    fireEvent.click(memberButton);
+
+    vi.setSystemTime(new Date("2024-01-08T11:00:00"));
+
+    fireEvent.click(screen.getByText("R11"));
+    const leaveButton = screen.getByRole("button", {
+      name: "退席する (磁石を外す)",
+    });
+    fireEvent.click(leaveButton);
+
+    fireEvent.click(screen.getByText("R11"));
+    screen.getByRole("button", { name: /Yamada \(2h0m\)/ });
 
     vi.useRealTimers();
   });

@@ -4,6 +4,7 @@ import type { User, UserCategory } from "../types";
 interface Props {
   isOpen: boolean;
   users: User[];
+  stayDurations: Record<string, string>;
   onSelect: (user: User) => void;
   onClose: () => void;
 }
@@ -19,6 +20,7 @@ const CATEGORY_CONFIG: Record<UserCategory, string> = {
 export const UserSelectModal: React.FC<Props> = ({
   isOpen,
   users,
+  stayDurations,
   onSelect,
   onClose,
 }) => {
@@ -69,7 +71,7 @@ export const UserSelectModal: React.FC<Props> = ({
                       onClick={() => onSelect(user)}
                       className="bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 text-blue-900 font-bold py-3 px-2 rounded-xl text-base md:text-lg transition-all active:scale-95 shadow-sm truncate"
                     >
-                      {user.name}
+                      {user.name} ({stayDurations[user.id] || "0m"})
                     </button>
                   ))}
                 </div>
