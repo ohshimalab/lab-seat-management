@@ -4,6 +4,7 @@ import {
   fireEvent,
   waitFor,
   act,
+  within,
 } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
@@ -210,22 +211,63 @@ describe("seat management - seating and clearing", () => {
     confirmSpy.mockRestore();
 
     await waitFor(() => {
-      expect(screen.getByText("R11").closest("div")).toHaveTextContent(
-        "空席"
-      );
+      expect(screen.getByText("R11").closest("div")).toHaveTextContent("空席");
     });
 
-    const savedSeats = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+    const savedSeats = JSON.parse(
+      localStorage.getItem("lab-seat-data") || "{}"
+    );
     expect(savedSeats.R11.userId).toBeNull();
     expect(savedSeats.R11.status).toBe("present");
     expect(savedSeats.R11.startedAt).toBeNull();
 
-    const sessions = JSON.parse(localStorage.getItem("lab-stay-sessions") || "[]");
+    const sessions = JSON.parse(
+      localStorage.getItem("lab-stay-sessions") || "[]"
+    );
     expect(sessions.length).toBeGreaterThan(0);
     const last = sessions[sessions.length - 1];
     expect(last.end).not.toBeNull();
     expect(last.end).toBeGreaterThanOrEqual(beforeReset);
     expect(last.start).toBeLessThan(last.end);
+  });
+
+  it("removes a seated user, clears seat, and ends their session", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByText("R11"));
+    await user.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+
+    const yamadaCell = screen
+      .getAllByText("Yamada")
+      .find((el) => el.tagName === "TD") as HTMLElement;
+    const yamadaRow = yamadaCell.closest("tr") as HTMLElement;
+    const deleteButton = within(yamadaRow).getByText("削除");
+    await user.click(deleteButton);
+    confirmSpy.mockRestore();
+
+    await user.click(screen.getByRole("button", { name: "閉じる" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("R11").closest("div")).toHaveTextContent("空席");
+    });
+
+    const seats = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+    expect(seats.R11.userId).toBeNull();
+    expect(seats.R11.status).toBe("present");
+    expect(seats.R11.startedAt).toBeNull();
+
+    const sessions = JSON.parse(
+      localStorage.getItem("lab-stay-sessions") || "[]"
+    );
+    expect(sessions.length).toBeGreaterThan(0);
+    const last = sessions[sessions.length - 1];
+    expect(last.userId).toBe("u1");
+    expect(last.end).not.toBeNull();
+    expect(last.end).toBeGreaterThanOrEqual(last.start);
   });
 
   it("supports drag-and-drop to move a user into an empty seat", async () => {
