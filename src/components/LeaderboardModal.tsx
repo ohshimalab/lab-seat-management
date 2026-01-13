@@ -122,9 +122,9 @@ export const LeaderboardModal: React.FC<Props> = ({
                     <div className="text-lg font-mono font-bold text-gray-800">
                       {row.formatted}
                     </div>
-                    <div className="text-[11px] text-gray-500">
+                    {/* <div className="text-[11px] text-gray-500">
                       {row.seconds} 秒
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}
