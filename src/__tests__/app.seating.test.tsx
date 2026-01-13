@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
@@ -53,62 +59,70 @@ describe("seat management - seating and clearing", () => {
     expect(firstSeat).toHaveTextContent("Yamada");
   });
 
-  it("auto resets seats when opened at or after 22:30", { timeout: 10000 }, async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-01-02T22:30:00"));
-    localStorage.setItem(
-      "lab-seat-data",
-      JSON.stringify({ R11: { userId: "u1", status: "present" } })
-    );
-    localStorage.setItem(
-      "lab-users-data",
-      JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
-    );
-    localStorage.setItem("lab-last-reset-date", "2024-01-01");
+  it(
+    "auto resets seats when opened at or after 22:30",
+    { timeout: 10000 },
+    async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-02T22:30:00"));
+      localStorage.setItem(
+        "lab-seat-data",
+        JSON.stringify({ R11: { userId: "u1", status: "present" } })
+      );
+      localStorage.setItem(
+        "lab-users-data",
+        JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
+      );
+      localStorage.setItem("lab-last-reset-date", "2024-01-01");
 
-    render(<App />);
+      render(<App />);
 
-    await Promise.resolve();
+      await Promise.resolve();
 
-    const clearedSeat = screen.getByText("R11").closest("div");
-    expect(clearedSeat).toHaveTextContent("空席");
+      const clearedSeat = screen.getByText("R11").closest("div");
+      expect(clearedSeat).toHaveTextContent("空席");
 
-    const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
-    expect(saved.R11?.userId ?? null).toBeNull();
-    expect(saved.R11?.status ?? "present").toBe("present");
-    expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
+      const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+      expect(saved.R11?.userId ?? null).toBeNull();
+      expect(saved.R11?.status ?? "present").toBe("present");
+      expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
 
-    vi.useRealTimers();
-  });
+      vi.useRealTimers();
+    }
+  );
 
-  it("catches up reset when opened before 6am", { timeout: 10000 }, async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-01-03T05:30:00"));
-    localStorage.setItem(
-      "lab-seat-data",
-      JSON.stringify({ R11: { userId: "u1", status: "present" } })
-    );
-    localStorage.setItem(
-      "lab-users-data",
-      JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
-    );
-    localStorage.setItem("lab-last-reset-date", "2024-01-01");
+  it(
+    "catches up reset when opened before 6am",
+    { timeout: 10000 },
+    async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-03T05:30:00"));
+      localStorage.setItem(
+        "lab-seat-data",
+        JSON.stringify({ R11: { userId: "u1", status: "present" } })
+      );
+      localStorage.setItem(
+        "lab-users-data",
+        JSON.stringify([{ id: "u1", name: "Yamada", category: "Staff" }])
+      );
+      localStorage.setItem("lab-last-reset-date", "2024-01-01");
 
-    render(<App />);
+      render(<App />);
 
-    await Promise.resolve();
+      await Promise.resolve();
 
-    const clearedSeat = screen.getByText("R11").closest("div");
-    expect(clearedSeat).toHaveTextContent("空席");
+      const clearedSeat = screen.getByText("R11").closest("div");
+      expect(clearedSeat).toHaveTextContent("空席");
 
-    const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
-    expect(saved.R11?.userId ?? null).toBeNull();
-    expect(saved.R11?.status ?? "present").toBe("present");
-    // Reset window key should track the previous day when before 6am
-    expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
+      const saved = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
+      expect(saved.R11?.userId ?? null).toBeNull();
+      expect(saved.R11?.status ?? "present").toBe("present");
+      // Reset window key should track the previous day when before 6am
+      expect(localStorage.getItem("lab-last-reset-date")).toBe("2024-01-02");
 
-    vi.useRealTimers();
-  });
+      vi.useRealTimers();
+    }
+  );
 
   it("tracks weekly stay duration and shows it in selection", async () => {
     vi.useFakeTimers();
@@ -132,6 +146,55 @@ describe("seat management - seating and clearing", () => {
 
     vi.useRealTimers();
   });
+
+  it(
+    "rolls week, closes open session, and reopens with refreshed startedAt",
+    { timeout: 10000 },
+    async () => {
+      vi.useFakeTimers();
+      const sunday = new Date("2024-01-07T23:50:00");
+      const monday = new Date("2024-01-08T00:05:00");
+      vi.setSystemTime(sunday);
+
+      try {
+        render(<App />);
+
+        fireEvent.click(screen.getByText("R11"));
+        fireEvent.click(screen.getByRole("button", { name: /Yamada/ }));
+
+        // Cross into the next week (Monday) and trigger the interval check.
+        vi.setSystemTime(monday);
+        act(() => {
+          vi.runOnlyPendingTimers();
+          vi.advanceTimersByTime(60 * 1000);
+          vi.runOnlyPendingTimers();
+        });
+        await act(async () => {});
+
+        const sessions = JSON.parse(
+          localStorage.getItem("lab-stay-sessions") || "[]"
+        );
+        const rolloverMs = monday.getTime();
+        const closed = sessions.find((s: any) => s.end !== null);
+        const reopened = sessions.find((s: any) => s.end === null);
+        expect(closed?.end).toBeGreaterThan(sunday.getTime());
+        expect(reopened?.start).toBeGreaterThanOrEqual(closed?.end || 0);
+        expect(reopened?.userId).toBe("u1");
+
+        const savedSeat = JSON.parse(
+          localStorage.getItem("lab-seat-data") || "{}"
+        );
+        expect(savedSeat.R11.userId).toBe("u1");
+        expect(savedSeat.R11.startedAt).toBe(reopened?.start);
+
+        expect(screen.getByText("R11").closest("div")).toHaveTextContent(
+          "Yamada"
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it("supports drag-and-drop to move a user into an empty seat", async () => {
     const user = userEvent.setup();
