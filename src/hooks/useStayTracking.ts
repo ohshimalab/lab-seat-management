@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+
+const getMinuteNow = () => Math.floor(Date.now() / 60000) * 60000;
 import type React from "react";
 import type { SeatState, StaySession, User } from "../types";
 
@@ -206,16 +214,32 @@ export function useStayTracking({
     return migrateTotalsToSessions();
   })();
 
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const current = Date.now();
-    setNowMs((prev) => (prev === current ? prev : current));
-  });
+  const nowRef = useRef<number | null>(null);
+  const nowMs = useSyncExternalStore(
+    (onStoreChange) => {
+      const tick = () => {
+        const next = getMinuteNow();
+        if (nowRef.current !== next) {
+          nowRef.current = next;
+          onStoreChange();
+        }
+      };
+      const id = setInterval(tick, 60 * 1000);
+      return () => clearInterval(id);
+    },
+    () => {
+      if (nowRef.current === null) {
+        nowRef.current = getMinuteNow();
+      } else {
+        const snapshot = getMinuteNow();
+        if (snapshot !== nowRef.current) {
+          nowRef.current = snapshot;
+        }
+      }
+      return nowRef.current;
+    },
+    () => nowRef.current ?? getMinuteNow()
+  );
 
   const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
   const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
@@ -241,10 +265,6 @@ export function useStayTracking({
     [sessions, nowMs]
   );
 
-  const selectedWeekTotals = useMemo(() => {
-    return weekUserTotals[selectedWeekKey] || {};
-  }, [weekUserTotals, selectedWeekKey]);
-
   const weekTotals = useMemo(() => {
     const map: Record<string, number> = {};
     Object.entries(weekUserTotals).forEach(([key, totals]) => {
@@ -256,6 +276,23 @@ export function useStayTracking({
     });
     return map;
   }, [weekUserTotals]);
+
+  const sortedWeekKeys = useMemo(() => {
+    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
+    keys.sort();
+    return keys;
+  }, [weekTotals]);
+
+  const activeSelectedWeekKey = useMemo(() => {
+    if (sortedWeekKeys.includes(selectedWeekKey)) return selectedWeekKey;
+    if (sortedWeekKeys.length > 0)
+      return sortedWeekKeys[sortedWeekKeys.length - 1];
+    return selectedWeekKey;
+  }, [selectedWeekKey, sortedWeekKeys]);
+
+  const selectedWeekTotals = useMemo(() => {
+    return weekUserTotals[activeSelectedWeekKey] || {};
+  }, [weekUserTotals, activeSelectedWeekKey]);
 
   const leaderboardRows = useMemo(() => {
     const rows = users.map((user) => {
@@ -275,43 +312,33 @@ export function useStayTracking({
       return b.minutes - a.minutes;
     });
 
-    let currentRank = 1;
-    let lastMinutes: number | null = null;
-    return rows.map((row, index) => {
-      if (index === 0) {
-        lastMinutes = row.minutes;
-        return { ...row, rank: currentRank };
-      }
-      if (row.minutes === lastMinutes) {
-        return { ...row, rank: currentRank };
-      }
-      currentRank += 1;
-      lastMinutes = row.minutes;
-      return { ...row, rank: currentRank };
-    });
+    return rows.reduce<
+      Array<{
+        userId: string;
+        name: string;
+        seconds: number;
+        minutes: number;
+        formatted: string;
+        rank: number;
+      }>
+    >((acc, row) => {
+      const previous = acc[acc.length - 1];
+      const rank = !previous
+        ? 1
+        : row.minutes === previous.minutes
+        ? previous.rank
+        : previous.rank + 1;
+      acc.push({ ...row, rank });
+      return acc;
+    }, []);
   }, [users, selectedWeekTotals]);
 
-  const sortedWeekKeys = useMemo(() => {
-    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
-    keys.sort();
-    return keys;
-  }, [weekTotals]);
-
-  useEffect(() => {
-    if (
-      !sortedWeekKeys.includes(selectedWeekKey) &&
-      sortedWeekKeys.length > 0
-    ) {
-      setSelectedWeekKey(sortedWeekKeys[sortedWeekKeys.length - 1]);
-    }
-  }, [sortedWeekKeys, selectedWeekKey]);
-
   const selectedWeekLabel = useMemo(
-    () => formatWeekLabel(selectedWeekKey),
-    [selectedWeekKey]
+    () => formatWeekLabel(activeSelectedWeekKey),
+    [activeSelectedWeekKey]
   );
 
-  const currentIndex = sortedWeekKeys.indexOf(selectedWeekKey);
+  const currentIndex = sortedWeekKeys.indexOf(activeSelectedWeekKey);
   const disablePrevWeek = currentIndex <= 0;
   const disableNextWeek =
     currentIndex === -1 || currentIndex >= sortedWeekKeys.length - 1;
