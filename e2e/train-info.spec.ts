@@ -6,12 +6,11 @@ const freezeDate = async (page: Page, isoString: string) => {
       const fixed = new Date(now).getTime();
       const RealDate = Date;
       class MockDate extends RealDate {
-        constructor(...args: any[]) {
+        constructor(...args: ConstructorParameters<typeof Date>) {
           if (args.length === 0) {
             super(fixed);
             return;
           }
-          // @ts-ignore
           super(...args);
         }
         static now() {
@@ -19,8 +18,7 @@ const freezeDate = async (page: Page, isoString: string) => {
         }
       }
       Object.setPrototypeOf(MockDate, RealDate);
-      // @ts-ignore
-      globalThis.Date = MockDate;
+      globalThis.Date = MockDate as typeof Date;
     },
     { now: isoString }
   );

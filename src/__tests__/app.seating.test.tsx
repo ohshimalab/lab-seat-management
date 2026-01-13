@@ -172,12 +172,17 @@ describe("seat management - seating and clearing", () => {
         });
         await act(async () => {});
 
+        type StoredSession = {
+          start: number;
+          end: number | null;
+          userId: string;
+        };
+
         const sessions = JSON.parse(
           localStorage.getItem("lab-stay-sessions") || "[]"
-        );
-        const rolloverMs = monday.getTime();
-        const closed = sessions.find((s: any) => s.end !== null);
-        const reopened = sessions.find((s: any) => s.end === null);
+        ) as StoredSession[];
+        const closed = sessions.find((s) => s.end !== null);
+        const reopened = sessions.find((s) => s.end === null);
         expect(closed?.end).toBeGreaterThan(sunday.getTime());
         expect(reopened?.start).toBeGreaterThanOrEqual(closed?.end || 0);
         expect(reopened?.userId).toBe("u1");
