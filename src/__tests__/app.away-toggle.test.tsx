@@ -14,7 +14,7 @@ describe("seat management - away toggle", () => {
 
     // Seat someone in R11
     await user.click(screen.getByText("R11"));
-    const memberButton = await screen.findByRole("button", { name: "Yamada" });
+    const memberButton = await screen.findByRole("button", { name: /Yamada/ });
     await user.click(memberButton);
 
     // Open modal, set away

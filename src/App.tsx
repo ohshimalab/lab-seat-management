@@ -7,7 +7,6 @@ import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
-import { WeeklyHistogramModal } from "./components/WeeklyHistogramModal";
 import type {
   User,
   SeatLayout,
@@ -221,7 +220,6 @@ function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [isHistogramOpen, setIsHistogramOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [weekKey, setWeekKey] = useState<string>(initialStay.weekKey);
@@ -362,21 +360,6 @@ function App() {
     return map;
   }, [stayHistory, liveCurrentWeekSeconds, weekKey]);
 
-  const sortedWeekKeys = useMemo(() => {
-    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
-    keys.sort();
-    return keys;
-  }, [weekTotals]);
-
-  useEffect(() => {
-    if (
-      !sortedWeekKeys.includes(selectedWeekKey) &&
-      sortedWeekKeys.length > 0
-    ) {
-      setSelectedWeekKey(sortedWeekKeys[sortedWeekKeys.length - 1]);
-    }
-  }, [sortedWeekKeys, selectedWeekKey]);
-
   const leaderboardRows = useMemo(() => {
     const rows = users.map((user) => {
       const seconds = selectedWeekTotals[user.id] || 0;
@@ -394,6 +377,12 @@ function App() {
     return rows;
   }, [users, selectedWeekTotals]);
 
+  const sortedWeekKeys = useMemo(() => {
+    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
+    keys.sort();
+    return keys;
+  }, [weekTotals]);
+
   const selectedWeekLabel = useMemo(
     () => formatWeekLabel(selectedWeekKey),
     [selectedWeekKey]
@@ -405,42 +394,6 @@ function App() {
     currentIndex === -1 || currentIndex >= sortedWeekKeys.length - 1;
   const thisWeekKey = getWeekStartKey(new Date());
   const disableThisWeek = !sortedWeekKeys.includes(thisWeekKey);
-
-  const histogramWeeks = useMemo(() => {
-    return sortedWeekKeys.map((key) => {
-      const total = weekTotals[key] || 0;
-      return {
-        weekKey: key,
-        label: formatWeekLabel(key),
-        totalSeconds: total,
-        formatted: formatStayDuration(total),
-        isSelected: key === selectedWeekKey,
-      };
-    });
-  }, [sortedWeekKeys, weekTotals, selectedWeekKey]);
-
-  const histogramUserBars = useMemo(() => {
-    const rows = users.map((user) => {
-      const seconds = selectedWeekTotals[user.id] || 0;
-      return {
-        key: user.id,
-        label: user.name,
-        totalSeconds: seconds,
-        formatted: formatStayDuration(seconds),
-        isSelected: false,
-      };
-    });
-    rows.sort((a, b) => {
-      if (a.totalSeconds === b.totalSeconds)
-        return a.label.localeCompare(b.label);
-      return b.totalSeconds - a.totalSeconds;
-    });
-    return rows;
-  }, [users, selectedWeekTotals]);
-
-  const selectedWeekTotalFormatted = formatStayDuration(
-    Object.values(selectedWeekTotals).reduce((acc, v) => acc + v, 0)
-  );
 
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
@@ -603,12 +556,6 @@ function App() {
         </h1>
         <div className="flex gap-2 md:gap-3">
           <button
-            onClick={() => setIsHistogramOpen(true)}
-            className="bg-emerald-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-emerald-500 shadow-md"
-          >
-            📊 週別滞在ヒストグラム
-          </button>
-          <button
             onClick={() => setIsLeaderboardOpen(true)}
             className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
           >
@@ -724,20 +671,6 @@ function App() {
         disablePrevWeek={disablePrevWeek}
         disableNextWeek={disableNextWeek}
         onClose={() => setIsLeaderboardOpen(false)}
-      />
-      <WeeklyHistogramModal
-        isOpen={isHistogramOpen}
-        weeks={histogramWeeks}
-        userBars={histogramUserBars}
-        selectedWeekLabel={selectedWeekLabel}
-        selectedWeekTotal={selectedWeekTotalFormatted}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-        onThisWeek={handleThisWeek}
-        disablePrevWeek={disablePrevWeek}
-        disableNextWeek={disableNextWeek}
-        disableThisWeek={disableThisWeek}
-        onClose={() => setIsHistogramOpen(false)}
       />
     </div>
   );
