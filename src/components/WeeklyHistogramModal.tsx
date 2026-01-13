@@ -1,57 +1,62 @@
 import React from "react";
-import type { User } from "../types";
 
-interface LeaderboardRow {
-  userId: string;
-  name: string;
-  seconds: number;
+interface WeekBar {
+  weekKey: string;
+  label: string;
+  totalSeconds: number;
   formatted: string;
+  isSelected: boolean;
 }
 
 interface Props {
   isOpen: boolean;
-  weekLabel: string;
-  rows: LeaderboardRow[];
-  users: User[];
+  weeks: WeekBar[];
+  maxSeconds: number;
+  selectedWeekLabel: string;
+  selectedWeekTotal: string;
+  onSelectWeek: (weekKey: string) => void;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
-  disableThisWeek: boolean;
   disablePrevWeek: boolean;
   disableNextWeek: boolean;
+  disableThisWeek: boolean;
   onClose: () => void;
 }
 
-export const LeaderboardModal: React.FC<Props> = ({
+export const WeeklyHistogramModal: React.FC<Props> = ({
   isOpen,
-  weekLabel,
-  rows,
-  users,
+  weeks,
+  maxSeconds,
+  selectedWeekLabel,
+  selectedWeekTotal,
+  onSelectWeek,
   onPrevWeek,
   onNextWeek,
   onThisWeek,
-  disableThisWeek,
   disablePrevWeek,
   disableNextWeek,
+  disableThisWeek,
   onClose,
 }) => {
   if (!isOpen) return null;
 
-  const totalUsers = users.length;
+  const empty = weeks.length === 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
-      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-3xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-4xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center mb-3 pb-2 border-b">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-              滞在時間ランキング
+              週別滞在時間ヒストグラム
             </h2>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="font-semibold">週:</span>
+            <div className="text-sm text-gray-600 flex gap-2 items-center">
+              <span className="font-semibold">選択中:</span>
               <span className="font-mono px-2 py-1 bg-gray-100 rounded-lg border border-gray-200">
-                {weekLabel}
+                {selectedWeekLabel}
               </span>
+              <span className="text-gray-500">合計 {selectedWeekTotal}</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -91,48 +96,42 @@ export const LeaderboardModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1">
-          {rows.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              データがありません
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          {empty ? (
+            <div className="text-center text-gray-500 py-10">データがありません</div>
           ) : (
-            <div className="space-y-2" role="list">
-              {rows.map((row, index) => (
-                <div
-                  key={row.userId}
-                  role="listitem"
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50 shadow-sm"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-gray-900 truncate">
-                        {row.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {row.seconds > 0 ? "累計滞在" : "データなし"}
-                      </span>
+            <div className="h-64 flex items-end gap-3 px-2" role="list">
+              {weeks.map((week) => {
+                const ratio = Math.max(0, week.totalSeconds) / maxSeconds;
+                const heightPercent = Math.max(6, Math.round(ratio * 100));
+                return (
+                  <button
+                    key={week.weekKey}
+                    onClick={() => onSelectWeek(week.weekKey)}
+                    role="listitem"
+                    className={`flex flex-col items-center justify-end gap-2 flex-1 min-w-[80px] p-2 rounded-lg border transition-all ${
+                      week.isSelected
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                    }`}
+                    aria-label={`${week.label} ${week.formatted}`}
+                  >
+                    <div className="w-full bg-emerald-500 rounded-t-md" style={{ height: `${heightPercent}%` }} />
+                    <div className="text-sm font-mono font-bold text-gray-800">
+                      {week.formatted}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-mono font-bold text-gray-800">
-                      {row.formatted}
+                    <div className="text-[11px] text-gray-600 text-center leading-tight">
+                      {week.label}
                     </div>
-                    <div className="text-[11px] text-gray-500">
-                      {row.seconds} 秒
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
         <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-          <span>メンバー: {totalUsers}人</span>
+          <span>合計週数: {weeks.length}</span>
           <button
             onClick={onClose}
             className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-bold hover:bg-gray-300 text-sm"

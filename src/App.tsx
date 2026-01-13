@@ -7,6 +7,7 @@ import { AdminModal } from "./components/AdminModal";
 import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
+import { WeeklyHistogramModal } from "./components/WeeklyHistogramModal";
 import type {
   User,
   SeatLayout,
@@ -131,6 +132,19 @@ const loadStayData = () => {
 
 function App() {
   const initialStay = loadStayData();
+  const initialSelectedWeekKey = (() => {
+    const totals: Record<string, number> = {};
+    Object.entries(initialStay.data).forEach(([key, vals]) => {
+      totals[key] = Object.values(vals || {}).reduce(
+        (acc, value) => acc + (value || 0),
+        0
+      );
+    });
+    const available = Object.keys(totals)
+      .filter((key) => totals[key] > 0)
+      .sort();
+    return available[available.length - 1] || initialStay.weekKey;
+  })();
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem("lab-users-data");
     if (saved) {
@@ -207,11 +221,12 @@ function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isHistogramOpen, setIsHistogramOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [weekKey, setWeekKey] = useState<string>(initialStay.weekKey);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(
-    initialStay.weekKey
+    initialSelectedWeekKey
   );
   const [stayHistory, setStayHistory] = useState<
     Record<string, Record<string, number>>
@@ -313,12 +328,23 @@ function App() {
     [stayHistory, selectedWeekKey]
   );
 
+  const weekTotals = useMemo(() => {
+    const map: Record<string, number> = {};
+    Object.entries(stayHistory).forEach(([key, totals]) => {
+      const sum = Object.values(totals || {}).reduce(
+        (acc, value) => acc + (value || 0),
+        0
+      );
+      map[key] = sum;
+    });
+    return map;
+  }, [stayHistory]);
+
   const sortedWeekKeys = useMemo(() => {
-    const keys = Array.from(
-      new Set([...Object.keys(stayHistory), weekKey, selectedWeekKey])
-    );
-    return keys.sort();
-  }, [stayHistory, weekKey, selectedWeekKey]);
+    const keys = Object.keys(weekTotals).filter((key) => weekTotals[key] > 0);
+    keys.sort();
+    return keys;
+  }, [weekTotals]);
 
   useEffect(() => {
     if (
@@ -355,6 +381,33 @@ function App() {
   const disablePrevWeek = currentIndex <= 0;
   const disableNextWeek =
     currentIndex === -1 || currentIndex >= sortedWeekKeys.length - 1;
+  const thisWeekKey = getWeekStartKey(new Date());
+  const disableThisWeek = !sortedWeekKeys.includes(thisWeekKey);
+
+  const histogramWeeks = useMemo(() => {
+    return sortedWeekKeys.map((key) => {
+      const total = weekTotals[key] || 0;
+      return {
+        weekKey: key,
+        label: formatWeekLabel(key),
+        totalSeconds: total,
+        formatted: formatStayDuration(total),
+        isSelected: key === selectedWeekKey,
+      };
+    });
+  }, [sortedWeekKeys, weekTotals, selectedWeekKey]);
+
+  const histogramMaxSeconds = useMemo(() => {
+    const max = histogramWeeks.reduce(
+      (acc, w) => Math.max(acc, w.totalSeconds),
+      0
+    );
+    return Math.max(max, 1);
+  }, [histogramWeeks]);
+
+  const selectedWeekTotalFormatted = formatStayDuration(
+    weekTotals[selectedWeekKey] || 0
+  );
 
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
@@ -499,12 +552,13 @@ function App() {
 
   const handleThisWeek = () => {
     const current = getWeekStartKey(new Date());
-    setWeekKey(current);
+    if (!sortedWeekKeys.includes(current)) return;
     setSelectedWeekKey(current);
-    setStayHistory((prev) => ({
-      ...prev,
-      [current]: prev[current] || {},
-    }));
+  };
+
+  const handleSelectWeek = (key: string) => {
+    if (!sortedWeekKeys.includes(key)) return;
+    setSelectedWeekKey(key);
   };
 
   const getSelectedUserName = () => {
@@ -520,6 +574,12 @@ function App() {
           大島研究室
         </h1>
         <div className="flex gap-2 md:gap-3">
+          <button
+            onClick={() => setIsHistogramOpen(true)}
+            className="bg-emerald-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-emerald-500 shadow-md"
+          >
+            📊 週別滞在ヒストグラム
+          </button>
           <button
             onClick={() => setIsLeaderboardOpen(true)}
             className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
@@ -632,9 +692,25 @@ function App() {
         onPrevWeek={handlePrevWeek}
         onNextWeek={handleNextWeek}
         onThisWeek={handleThisWeek}
+        disableThisWeek={disableThisWeek}
         disablePrevWeek={disablePrevWeek}
         disableNextWeek={disableNextWeek}
         onClose={() => setIsLeaderboardOpen(false)}
+      />
+      <WeeklyHistogramModal
+        isOpen={isHistogramOpen}
+        weeks={histogramWeeks}
+        maxSeconds={histogramMaxSeconds}
+        selectedWeekLabel={selectedWeekLabel}
+        selectedWeekTotal={selectedWeekTotalFormatted}
+        onSelectWeek={handleSelectWeek}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onThisWeek={handleThisWeek}
+        disablePrevWeek={disablePrevWeek}
+        disableNextWeek={disableNextWeek}
+        disableThisWeek={disableThisWeek}
+        onClose={() => setIsHistogramOpen(false)}
       />
     </div>
   );
