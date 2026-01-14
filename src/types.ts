@@ -16,6 +16,12 @@ export interface SeatState {
   startedAt: number | null;
 }
 
+export interface MqttConfig {
+  serverUrl: string;
+  clientName: string;
+  clientPassword: string;
+}
+
 export type SeatTimelineState = "empty" | "present" | "away";
 
 export interface SeatTimelineSlice {

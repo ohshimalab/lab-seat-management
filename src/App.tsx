@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import mqtt from "mqtt";
 import type React from "react";
 import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
@@ -17,6 +18,7 @@ import type {
   SeatState,
   SeatStatus,
   StaySession,
+  MqttConfig,
 } from "./types";
 
 // --- 初期レイアウト ---
@@ -31,6 +33,19 @@ const DEFAULT_USERS: User[] = [
   { id: "u1", name: "Yamada", category: "Staff" },
   { id: "u2", name: "Tanaka", category: "M" },
 ];
+
+const DEFAULT_MQTT_CONFIG: MqttConfig = {
+  serverUrl: "",
+  clientName: "",
+  clientPassword: "",
+};
+
+const EMPTY_TELEMETRY = {
+  temp: null as number | null,
+  hum: null as number | null,
+  location: "",
+  updatedAt: null as number | null,
+};
 
 const createEmptySeatStates = () => {
   const base: Record<string, SeatState> = {};
@@ -110,6 +125,33 @@ function App() {
     localStorage.setItem("lab-seat-data", JSON.stringify(seatStates));
   }, [seatStates]);
 
+  const [mqttConfig, setMqttConfig] = useState<MqttConfig>(() => {
+    const saved = localStorage.getItem("lab-mqtt-config");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<MqttConfig>;
+        return {
+          ...DEFAULT_MQTT_CONFIG,
+          ...parsed,
+        };
+      } catch {
+        return DEFAULT_MQTT_CONFIG;
+      }
+    }
+    return DEFAULT_MQTT_CONFIG;
+  });
+
+  const [envTelemetry, setEnvTelemetry] = useState<{
+    temp: number | null;
+    hum: number | null;
+    location: string;
+    updatedAt: number | null;
+  }>({ ...EMPTY_TELEMETRY });
+
+  useEffect(() => {
+    localStorage.setItem("lab-mqtt-config", JSON.stringify(mqttConfig));
+  }, [mqttConfig]);
+
   const finalizeSeatOccupant = (seatId: string, now: number) => {
     const seat = seatStates[seatId];
     if (seat?.userId) endSession(seat.userId, seatId, now);
@@ -162,6 +204,17 @@ function App() {
 
   const hasSeatedUser = seatedUserIds.length > 0;
 
+  const tempDisplay =
+    envTelemetry.temp === null ? "--" : envTelemetry.temp.toFixed(1);
+  const humDisplay =
+    envTelemetry.hum === null ? "--" : envTelemetry.hum.toFixed(1);
+  const updatedLabel = envTelemetry.updatedAt
+    ? new Date(envTelemetry.updatedAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
   useEffect(() => {
     const STORAGE_KEY = "lab-home-reminder-date";
     const BUFFER_MINUTES = 5;
@@ -200,6 +253,93 @@ function App() {
       String(reminderDuration)
     );
   }, [reminderDuration]);
+
+  const isMqttConfigValid = (config: MqttConfig) =>
+    Boolean(config.serverUrl && config.clientName);
+
+  const handleMqttConfigChange = (config: MqttConfig) => {
+    setMqttConfig(config);
+    if (!isMqttConfigValid(config)) {
+      setEnvTelemetry({ ...EMPTY_TELEMETRY });
+    }
+  };
+
+  useEffect(() => {
+    if (!isMqttConfigValid(mqttConfig)) return;
+
+    let isMounted = true;
+    const { serverUrl, clientName } = mqttConfig;
+    const normalized = serverUrl.replace(/\s+/g, "");
+    const hasProtocol =
+      normalized.startsWith("ws://") || normalized.startsWith("wss://");
+    const wsUrl = hasProtocol ? normalized : `wss://${normalized}`;
+    const clientId = `${clientName}-${Math.random().toString(16).slice(2, 8)}`;
+
+    const client = mqtt.connect(wsUrl, {
+      clientId,
+      username: clientName,
+      password: mqttConfig.clientPassword || undefined,
+      reconnectPeriod: 5000,
+      clean: true,
+    });
+
+    const topic = "ohshimalab/+/+/telemetry";
+
+    const handleMessage = (_topic: string, payload: unknown) => {
+      try {
+        const text =
+          typeof payload === "string"
+            ? payload
+            : payload instanceof Uint8Array
+            ? new TextDecoder().decode(payload)
+            : payload instanceof ArrayBuffer
+            ? new TextDecoder().decode(new Uint8Array(payload))
+            : String(payload);
+        const parsed = JSON.parse(text) as {
+          meta?: { loc?: string; ts?: number };
+          values?: { temp?: number; hum?: number };
+        };
+        const temp = parsed.values?.temp;
+        const hum = parsed.values?.hum;
+        if (typeof temp === "number" && typeof hum === "number" && isMounted) {
+          setEnvTelemetry({
+            temp,
+            hum,
+            location:
+              parsed.meta && typeof parsed.meta.loc === "string"
+                ? parsed.meta.loc
+                : "",
+            updatedAt:
+              parsed.meta && typeof parsed.meta.ts === "number"
+                ? parsed.meta.ts * 1000
+                : Date.now(),
+          });
+        }
+      } catch {
+        // ignore malformed payloads
+      }
+    };
+
+    const handleDisconnect = () => {
+      if (isMounted) setEnvTelemetry({ ...EMPTY_TELEMETRY });
+    };
+
+    client.on("connect", () => {
+      client.subscribe(topic);
+    });
+
+    client.on("message", handleMessage);
+    client.on("close", handleDisconnect);
+    client.on("error", handleDisconnect);
+
+    return () => {
+      isMounted = false;
+      client.removeListener("message", handleMessage);
+      client.removeListener("close", handleDisconnect);
+      client.removeListener("error", handleDisconnect);
+      client.end(true);
+    };
+  }, [mqttConfig]);
 
   const resetReminderDate = () => {
     localStorage.removeItem("lab-home-reminder-date");
@@ -449,16 +589,17 @@ function App() {
     () =>
       JSON.stringify(
         {
-          version: 1,
+          version: 2,
           users,
           seatStates,
           sessions,
           lastResetDate: lastResetDate || null,
+          mqttConfig,
         },
         null,
         2
       ),
-    [users, seatStates, sessions, lastResetDate]
+    [users, seatStates, sessions, lastResetDate, mqttConfig]
   );
 
   const handleImportData = (raw: string) => {
@@ -509,12 +650,22 @@ function App() {
           ? (parsed as { lastResetDate?: string }).lastResetDate
           : null;
 
+      const importedMqttConfigRaw =
+        (parsed as { mqttConfig?: unknown }).mqttConfig || {};
+      const importedMqttConfig: MqttConfig = {
+        ...DEFAULT_MQTT_CONFIG,
+        ...(typeof importedMqttConfigRaw === "object" && importedMqttConfigRaw
+          ? (importedMqttConfigRaw as Partial<MqttConfig>)
+          : {}),
+      };
+
       setUsers(importedUsers);
       setSeatStates(importedSeats);
       importTrackingData({
         sessions: importedSessions,
         lastResetDate: importedLastReset,
       });
+      setMqttConfig(importedMqttConfig);
 
       return { success: true, message: "インポートが完了しました" };
     } catch {
@@ -525,9 +676,29 @@ function App() {
   return (
     <div className="h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
       <div className="flex flex-wrap justify-between items-center gap-2 mb-2 px-2">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-          大島研究室
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+            大島研究室
+          </h1>
+          <div className="flex items-start gap-3 text-xs md:text-sm text-gray-700 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex flex-col gap-0.5 leading-tight">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">気温</span>
+                <span className="font-mono text-gray-900">{tempDisplay}°C</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">湿度</span>
+                <span className="font-mono text-gray-900">{humDisplay}%</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-0.5 leading-tight text-[11px] text-gray-500">
+              {envTelemetry.location && <span>({envTelemetry.location})</span>}
+              {updatedLabel && (
+                <span className="text-gray-400">更新 {updatedLabel}</span>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="flex gap-2 md:gap-3">
           <button
             onClick={() => setIsLeaderboardOpen(true)}
@@ -632,6 +803,8 @@ function App() {
         onResetReminderDate={resetReminderDate}
         reminderDuration={reminderDuration}
         onChangeReminderDuration={setReminderDuration}
+        mqttConfig={mqttConfig}
+        onChangeMqttConfig={handleMqttConfigChange}
         onAddUser={handleAddUser}
         onRemoveUser={handleRemoveUser}
         sessions={sessions}
