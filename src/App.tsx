@@ -548,7 +548,7 @@ function App() {
             onClick={() => setIsAdminModalOpen(true)}
             className="bg-gray-800 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-gray-700 shadow-md"
           >
-            ⚙ メンバー管理
+            ⚙ 設定
           </button>
         </div>
       </div>
