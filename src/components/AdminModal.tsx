@@ -153,9 +153,7 @@ export const AdminModal: React.FC<Props> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
       <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-3xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[85vh]">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-            メンバー管理
-          </h2>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800">設定</h2>
           <button
             onClick={onClose}
             className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-300 active:scale-95 transition-transform"

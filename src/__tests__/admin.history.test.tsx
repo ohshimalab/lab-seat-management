@@ -14,7 +14,7 @@ describe("admin history management", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
 
     fireEvent.change(screen.getByDisplayValue("ユーザーを選択"), {
       target: { value: "u1" },
@@ -67,7 +67,7 @@ describe("admin history management", () => {
     fireEvent.click(screen.getByRole("button", { name: "✕ 閉じる" }));
 
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
 
     const deleteButtons = screen.getAllByText("削除");
     fireEvent.click(deleteButtons[deleteButtons.length - 1]);
@@ -101,7 +101,7 @@ describe("admin history management", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
 
     const editButton = screen.getByRole("button", { name: "編集" });
     fireEvent.click(editButton);

@@ -244,7 +244,7 @@ describe("seat management - seating and clearing", () => {
     await user.click(screen.getByRole("button", { name: /Yamada/ }));
 
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    await user.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    await user.click(screen.getByRole("button", { name: "⚙ 設定" }));
 
     const yamadaCell = screen
       .getAllByText("Yamada")
@@ -345,7 +345,7 @@ describe("seat management - seating and clearing", () => {
     await user.click(screen.getByText("R11"));
     await user.click(screen.getByRole("button", { name: /Yamada/ }));
 
-    await user.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    await user.click(screen.getByRole("button", { name: "⚙ 設定" }));
 
     const exportArea = (await screen.findByLabelText(
       "export-data"

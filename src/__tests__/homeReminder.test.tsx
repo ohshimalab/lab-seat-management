@@ -19,7 +19,7 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
     fireEvent.change(screen.getByDisplayValue("20:00"), {
       target: { value: "15:58" },
     });
@@ -44,7 +44,7 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
     fireEvent.click(
       screen.getByRole("button", { name: "今日のリマインダーをリセット" })
     );
@@ -60,7 +60,7 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ メンバー管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
     fireEvent.change(screen.getByDisplayValue("20:00"), {
       target: { value: "16:00" },
     });
