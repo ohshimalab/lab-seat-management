@@ -3,6 +3,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 
 const setNow = (iso: string) => vi.setSystemTime(new Date(iso));
+const openSettings = () =>
+  fireEvent.click(screen.getByRole("button", { name: /⚙/ }));
+const seatSomeone = () => {
+  fireEvent.click(screen.getByText("R11"));
+  const userButton = screen.getByRole("button", { name: /Yamada/ });
+  fireEvent.click(userButton);
+};
 
 describe("home reminder", () => {
   beforeEach(() => {
@@ -19,7 +26,9 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
+    seatSomeone();
+    openSettings();
+
     fireEvent.change(screen.getByDisplayValue("20:00"), {
       target: { value: "15:58" },
     });
@@ -29,11 +38,13 @@ describe("home reminder", () => {
     expect(stored).toBe("2024-01-08");
   });
 
-  it("does not open when configured time is more than 5 minutes past", () => {
+  it("does not open when configured time is more than 5 minutes past", async () => {
     setNow("2024-01-08T16:00:00");
     localStorage.setItem("lab-home-reminder-time", "15:00");
 
     render(<App />);
+
+    seatSomeone();
 
     expect(screen.queryByText("そろそろ帰宅時間です")).toBeNull();
   });
@@ -44,7 +55,8 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
+    seatSomeone();
+    openSettings();
     fireEvent.click(
       screen.getByRole("button", { name: "今日のリマインダーをリセット" })
     );
@@ -60,7 +72,8 @@ describe("home reminder", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "⚙ 設定" }));
+    seatSomeone();
+    openSettings();
     fireEvent.change(screen.getByDisplayValue("20:00"), {
       target: { value: "16:00" },
     });
@@ -73,6 +86,15 @@ describe("home reminder", () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
+
+    expect(screen.queryByText("そろそろ帰宅時間です")).toBeNull();
+  });
+
+  it("does not open when nobody is seated", () => {
+    setNow("2024-01-08T16:00:00");
+    localStorage.setItem("lab-home-reminder-time", "15:58");
+
+    render(<App />);
 
     expect(screen.queryByText("そろそろ帰宅時間です")).toBeNull();
   });

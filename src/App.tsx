@@ -160,6 +160,8 @@ function App() {
     [seatStates]
   );
 
+  const hasSeatedUser = seatedUserIds.length > 0;
+
   useEffect(() => {
     const STORAGE_KEY = "lab-home-reminder-date";
     const BUFFER_MINUTES = 5;
@@ -170,6 +172,7 @@ function App() {
     };
 
     const checkReminder = () => {
+      if (!hasSeatedUser) return;
       const now = new Date();
       const dateKey = now.toISOString().slice(0, 10);
       const targetMinutes = parseMinutes(reminderTime);
@@ -185,7 +188,7 @@ function App() {
     checkReminder();
     const id = setInterval(checkReminder, 60 * 1000);
     return () => clearInterval(id);
-  }, [reminderTime]);
+  }, [reminderTime, hasSeatedUser]);
 
   useEffect(() => {
     localStorage.setItem("lab-home-reminder-time", reminderTime);
