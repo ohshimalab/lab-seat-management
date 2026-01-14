@@ -32,7 +32,9 @@ export const HomeReminderModal: React.FC<HomeReminderModalProps> = ({
             <div className="text-lg font-bold text-gray-900">
               そろそろ帰宅時間です
             </div>
-            <div className="text-sm text-gray-600">音が流れます</div>
+            <div className="text-sm text-gray-600">
+              音が流れます（{autoCloseMs / 1000}秒で自動的に閉じます）
+            </div>
           </div>
           <button
             onClick={onClose}
