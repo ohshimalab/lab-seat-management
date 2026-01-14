@@ -165,6 +165,7 @@ function App() {
     handleThisWeek,
     lastResetDate,
     importTrackingData,
+    todaySeatTimeline,
   } = useStayTracking({
     users,
     seatStates,
@@ -530,6 +531,7 @@ function App() {
                       onDragOver={handleSeatDragOver}
                       onDrop={handleSeatDrop}
                       onDragEnd={handleSeatDragEnd}
+                      timelineSlices={todaySeatTimeline[seatId]}
                     />
                   );
                 })}

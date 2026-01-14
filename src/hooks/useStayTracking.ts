@@ -8,7 +8,13 @@ import {
 
 const getMinuteNow = () => Math.floor(Date.now() / 60000) * 60000;
 import type React from "react";
-import type { SeatState, StaySession, User } from "../types";
+import type {
+  SeatState,
+  StaySession,
+  User,
+  SeatTimelineSlice,
+  SeatTimelineState,
+} from "../types";
 
 const formatDateKey = (date: Date) => {
   const yyyy = date.getFullYear();
@@ -72,6 +78,8 @@ const getResetWindowKey = (date: Date) => {
   prev.setDate(prev.getDate() - 1);
   return formatDateKey(prev);
 };
+
+const TIMELINE_BUCKET_MINUTES = 30;
 
 const SESSIONS_KEY = "lab-stay-sessions";
 const newSessionId = () =>
@@ -355,6 +363,64 @@ export function useStayTracking({
     return map;
   }, [users, weekUserTotals, weekKey]);
 
+  const todaySeatTimeline = useMemo(() => {
+    const bucketMs = TIMELINE_BUCKET_MINUTES * 60 * 1000;
+    const startOfDay = new Date(nowMs);
+    startOfDay.setHours(0, 0, 0, 0);
+    const dayStart = startOfDay.getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    const bucketCount = Math.max(1, Math.ceil((dayEnd - dayStart) / bucketMs));
+
+    const base: Record<string, SeatTimelineSlice[]> = {};
+    Object.keys(seatStates).forEach((seatId) => {
+      base[seatId] = Array.from({ length: bucketCount }, (_, idx) => {
+        const start = dayStart + idx * bucketMs;
+        return {
+          start,
+          end: Math.min(start + bucketMs, dayEnd),
+          state: "empty" as SeatTimelineState,
+        };
+      });
+    });
+
+    sessions.forEach((session) => {
+      const slices = base[session.seatId];
+      if (!slices) return;
+      const effectiveStart = Math.max(session.start, dayStart);
+      const rawEnd = session.end ?? nowMs;
+      const effectiveEnd = Math.min(rawEnd, dayEnd);
+      if (effectiveEnd <= dayStart || effectiveEnd <= effectiveStart) return;
+
+      const startIdx = Math.max(
+        0,
+        Math.floor((effectiveStart - dayStart) / bucketMs)
+      );
+      const endIdx = Math.min(
+        slices.length,
+        Math.ceil((effectiveEnd - dayStart) / bucketMs)
+      );
+
+      for (let idx = startIdx; idx < endIdx; idx += 1) {
+        const slice = slices[idx];
+        if (slice) slice.state = "present";
+      }
+    });
+
+    Object.entries(seatStates).forEach(([seatId, seat]) => {
+      if (!seat?.userId || seat.status !== "away") return;
+      const slices = base[seatId];
+      if (!slices || slices.length === 0) return;
+      const currentIdx = Math.min(
+        slices.length - 1,
+        Math.floor((nowMs - dayStart) / bucketMs)
+      );
+      const target = slices[currentIdx];
+      if (target) target.state = "away";
+    });
+
+    return base;
+  }, [seatStates, sessions, nowMs]);
+
   const selectedWeekTotalFormatted = formatStayDuration(
     Object.values(selectedWeekTotals).reduce((acc, v) => acc + v, 0)
   );
@@ -537,6 +603,7 @@ export function useStayTracking({
     disableNextWeek,
     disableThisWeek,
     stayDurationDisplay,
+    todaySeatTimeline,
     startSession,
     endSession,
     addSessionManual,

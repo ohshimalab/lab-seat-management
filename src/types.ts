@@ -16,6 +16,14 @@ export interface SeatState {
   startedAt: number | null;
 }
 
+export type SeatTimelineState = "empty" | "present" | "away";
+
+export interface SeatTimelineSlice {
+  start: number;
+  end: number;
+  state: SeatTimelineState;
+}
+
 export interface StaySession {
   id?: string;
   userId: string;
