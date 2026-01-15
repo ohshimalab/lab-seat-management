@@ -31,6 +31,25 @@ type Options = {
   normalizeSeatStates: (raw: unknown) => Record<string, SeatState>;
 };
 
+const isUserRecord = (value: unknown): value is User => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<User>;
+  return typeof record.id === "string" && typeof record.name === "string";
+};
+
+const isStaySessionRecord = (value: unknown): value is StaySession => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<StaySession>;
+  const hasIds =
+    typeof record.userId === "string" && typeof record.seatId === "string";
+  const hasStart = typeof record.start === "number";
+  const hasEnd =
+    typeof record.end === "number" ||
+    record.end === null ||
+    record.end === undefined;
+  return Boolean(hasIds && hasStart && hasEnd);
+};
+
 export const useLabStorage = ({
   defaultUsers,
   createEmptySeatStates,
@@ -41,10 +60,14 @@ export const useLabStorage = ({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed.map((u: User) => ({
-          ...u,
-          category: u.category || "Other",
-        }));
+        if (Array.isArray(parsed)) {
+          return parsed.filter(isUserRecord).map((u) => ({
+            id: u.id,
+            name: u.name,
+            category: u.category || "Other",
+          }));
+        }
+        return defaultUsers;
       } catch {
         return defaultUsers;
       }
@@ -111,11 +134,8 @@ export const useLabStorage = ({
           const importedUsers: User[] = Array.isArray(
             (parsed as { users?: unknown }).users
           )
-            ? ((parsed as { users?: unknown }).users as User[])
-                .filter(
-                  (u) =>
-                    u && typeof u.id === "string" && typeof u.name === "string"
-                )
+            ? ((parsed as { users?: unknown }).users as unknown[])
+                .filter(isUserRecord)
                 .map((u) => ({
                   id: u.id,
                   name: u.name,
@@ -134,16 +154,15 @@ export const useLabStorage = ({
           const importedSessions: StaySession[] = Array.isArray(
             (parsed as { sessions?: unknown }).sessions
           )
-            ? (
-                (parsed as { sessions?: unknown }).sessions as StaySession[]
-              ).filter(
-                (s) =>
-                  s &&
-                  typeof s.userId === "string" &&
-                  typeof s.seatId === "string" &&
-                  typeof s.start === "number" &&
-                  (typeof s.end === "number" || s.end === null)
-              )
+            ? ((parsed as { sessions?: unknown }).sessions as unknown[])
+                .filter(isStaySessionRecord)
+                .map((s) => ({
+                  id: s.id,
+                  userId: s.userId,
+                  seatId: s.seatId,
+                  start: s.start,
+                  end: typeof s.end === "number" ? s.end : s.end ?? null,
+                }))
             : [];
 
           const importedLastReset: string | null =
