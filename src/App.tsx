@@ -10,9 +10,9 @@ import { useEnvTelemetry } from "./hooks/useEnvTelemetry";
 import { useLabStorage } from "./hooks/useLabStorage";
 import { useSeatDrag } from "./hooks/useSeatDrag";
 import { useSeatAssignment } from "./hooks/useSeatAssignment";
-import { useSeatViewModel } from "./hooks/useSeatViewModel";
 import { useAdminActions } from "./hooks/useAdminActions";
 import { useStorageIO } from "./hooks/useStorageIO";
+import { useSeatAvailability } from "./hooks/useSeatAvailability";
 import {
   INITIAL_LAYOUT,
   DEFAULT_USERS,
@@ -67,8 +67,10 @@ function App() {
     createEmptySeatStates,
   });
 
-  const { seatedUserIds, availableUsers, hasEmptySeat, seatCards } =
-    useSeatViewModel({ seatStates, users, todaySeatTimeline });
+  const { seatedUserIds, availableUsers, hasEmptySeat } = useSeatAvailability({
+    seatStates,
+    users,
+  });
 
   const hasSeatedUser = seatedUserIds.length > 0;
 
@@ -174,7 +176,6 @@ function App() {
       <MainPanels
         layout={INITIAL_LAYOUT}
         seatStates={seatStates}
-        seatCards={seatCards}
         users={users}
         draggingSeatId={draggingSeatId}
         todaySeatTimeline={todaySeatTimeline}

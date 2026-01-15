@@ -1,4 +1,5 @@
 import type React from "react";
+import { useMemo } from "react";
 import { Seat } from "./Seat";
 import type {
   SeatLayout,
@@ -11,14 +12,6 @@ import type {
 interface SeatGridProps {
   layout: SeatLayout[];
   seatStates: Record<string, SeatState>;
-  seatCards?: Record<
-    string,
-    {
-      seatState: SeatState;
-      user: User | null;
-      timeline?: SeatTimelineSlice[];
-    }
-  >;
   users: User[];
   draggingSeatId: string | null;
   todaySeatTimeline: Record<string, SeatTimelineSlice[]>;
@@ -34,6 +27,14 @@ interface SeatGridProps {
 
 interface SeatRowProps extends Omit<SeatGridProps, "layout"> {
   row: SeatLayout;
+  seatCards: Record<
+    string,
+    {
+      seatState: SeatState;
+      user: User | null;
+      timeline?: SeatTimelineSlice[];
+    }
+  >;
 }
 
 const SeatRow: React.FC<SeatRowProps> = ({
@@ -91,11 +92,34 @@ const SeatRow: React.FC<SeatRowProps> = ({
 };
 
 export const SeatGrid: React.FC<SeatGridProps> = (props) => {
-  const { layout } = props;
+  const { layout, seatStates, users, todaySeatTimeline } = props;
+
+  const seatCards = useMemo(() => {
+    const cards: Record<
+      string,
+      {
+        seatState: SeatState;
+        user: User | null;
+        timeline?: SeatTimelineSlice[];
+      }
+    > = {};
+    Object.entries(seatStates).forEach(([seatId, seatState]) => {
+      const user = seatState.userId
+        ? users.find((u) => u.id === seatState.userId) || null
+        : null;
+      cards[seatId] = {
+        seatState,
+        user,
+        timeline: todaySeatTimeline[seatId],
+      };
+    });
+    return cards;
+  }, [seatStates, todaySeatTimeline, users]);
+
   return (
     <>
       {layout.map((row) => (
-        <SeatRow key={row.rowId} row={row} {...props} />
+        <SeatRow key={row.rowId} row={row} seatCards={seatCards} {...props} />
       ))}
     </>
   );

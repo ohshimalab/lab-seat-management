@@ -7,14 +7,6 @@ import type { SeatLayout, SeatState, SeatTimelineSlice, User } from "../types";
 interface MainPanelsProps {
   layout: SeatLayout[];
   seatStates: Record<string, SeatState>;
-  seatCards: Record<
-    string,
-    {
-      seatState: SeatState;
-      user: User | null;
-      timeline?: SeatTimelineSlice[];
-    }
-  >;
   users: User[];
   draggingSeatId: string | null;
   todaySeatTimeline: Record<string, SeatTimelineSlice[]>;
@@ -31,7 +23,6 @@ interface MainPanelsProps {
 export const MainPanels = ({
   layout,
   seatStates,
-  seatCards,
   users,
   draggingSeatId,
   todaySeatTimeline,
@@ -47,7 +38,6 @@ export const MainPanels = ({
         <SeatGrid
           layout={layout}
           seatStates={seatStates}
-          seatCards={seatCards}
           users={users}
           draggingSeatId={draggingSeatId}
           todaySeatTimeline={todaySeatTimeline}
