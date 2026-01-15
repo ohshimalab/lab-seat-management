@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import type React from "react";
 import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
 import { ActionModal } from "./components/ActionModal";
@@ -14,6 +13,7 @@ import { FIRST_ARRIVAL_KEY, useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
 import { useEnvTelemetry } from "./hooks/useEnvTelemetry";
 import { useLabStorage } from "./hooks/useLabStorage";
+import { useSeatDrag } from "./hooks/useSeatDrag";
 import type {
   SeatLayout,
   User,
@@ -109,7 +109,6 @@ function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
-  const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
 
   const seatedUserIds = useMemo(
     () =>
@@ -343,83 +342,18 @@ function App() {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
-  const handleSeatDragStart = (seatId: string) => {
-    if (seatStates[seatId]?.userId) setDraggingSeatId(seatId);
-  };
-
-  const handleSeatDragEnd = () => {
-    setDraggingSeatId(null);
-  };
-
-  const handleSeatDragOver = (
-    seatId: string,
-    event: React.DragEvent<HTMLDivElement>
-  ) => {
-    if (!draggingSeatId || seatId === draggingSeatId) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  };
-
-  const handleSeatDrop = (targetSeatId: string) => {
-    if (!draggingSeatId || draggingSeatId === targetSeatId) {
-      setDraggingSeatId(null);
-      return;
-    }
-
-    const sourceSeat = seatStates[draggingSeatId];
-    const targetSeat = seatStates[targetSeatId];
-    if (!sourceSeat?.userId) {
-      setDraggingSeatId(null);
-      return;
-    }
-
-    const now = Date.now();
-    const userId = sourceSeat.userId;
-
-    setSeatStates((prev) => {
-      const from = prev[draggingSeatId];
-      const to = prev[targetSeatId];
-      if (!from?.userId) return prev;
-      const next: Record<string, SeatState> = { ...prev };
-
-      // Swap if target occupied, otherwise move into empty
-      if (to?.userId) {
-        next[draggingSeatId] = {
-          userId: to.userId,
-          status: to.status || "present",
-          startedAt: now,
-        };
-        next[targetSeatId] = {
-          userId: from.userId,
-          status: from.status || "present",
-          startedAt: now,
-        };
-      } else {
-        next[draggingSeatId] = {
-          userId: null,
-          status: "present",
-          startedAt: null,
-        };
-        next[targetSeatId] = {
-          userId: from.userId,
-          status: from.status || "present",
-          startedAt: now,
-        };
-      }
-      return next;
-    });
-
-    if (targetSeat?.userId) {
-      endSession(userId, draggingSeatId, now);
-      endSession(targetSeat.userId, targetSeatId, now);
-      startSession(userId, targetSeatId, now);
-      startSession(targetSeat.userId, draggingSeatId, now);
-    } else {
-      endSession(userId, draggingSeatId, now);
-      startSession(userId, targetSeatId, now);
-    }
-    setDraggingSeatId(null);
-  };
+  const {
+    draggingSeatId,
+    handleSeatDragStart,
+    handleSeatDragOver,
+    handleSeatDrop,
+    handleSeatDragEnd,
+  } = useSeatDrag({
+    seatStates,
+    setSeatStates,
+    startSession,
+    endSession,
+  });
 
   const handleReset = () => {
     if (confirm("全ての席状況をリセットしますか？")) {
