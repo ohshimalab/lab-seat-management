@@ -1,42 +1,49 @@
 # Lab Seat Management – Copilot Instructions
 
-## Stack & Entry Points
+## Stack & Entrypoints
 
-- React 19 + TypeScript + Vite 7; Tailwind utility classes in JSX (no CSS modules). Dev server `npm run dev`.
-- Main controller: [src/App.tsx](src/App.tsx). Centralizes seat layout, modal toggles, and delegates stay tracking to `useStayTracking`.
-- Domain types live in [src/types.ts](src/types.ts) (`User`, `SeatState`, `StaySession`, `UserCategory`). Keep new data aligned there.
+- React 19 + TypeScript + Vite 7; Tailwind classes in JSX (no CSS files). Dev server `npm run dev`.
+- Main controller [src/App.tsx](src/App.tsx) wires layout, modals, seat actions, drag/drop, reminders, telemetry, and delegates tracking to custom hooks.
+- Domain types in [src/types.ts](src/types.ts) (`User`, `SeatState`, `StaySession`, `SeatTimelineSlice`, `UserCategory`); align any new data structures here.
 
-## State, Persistence, and Layout
+## State, Persistence, Import/Export
 
-- Seat grid defined in `INITIAL_LAYOUT` in [src/App.tsx](src/App.tsx); empty-state factory `createEmptySeatStates` ensures all seats exist.
-- LocalStorage keys: `lab-users-data`, `lab-seat-data` for current occupants; `lab-stay-sessions` plus `lab-last-reset-date` for history. Use `normalizeSeatStates` to tolerate legacy shapes.
-- Default members `DEFAULT_USERS` seed the app when storage is empty; categories are `Staff|D|M|B|Other`.
-- Seat actions: select empty seat → `UserSelectModal`; occupied seat → `ActionModal` (toggle away/present or leave). Random assignment via `RandomSeatModal` → `assignRandomSeatForUser` updates both seat state and stay session.
+- Seat grid fixed by `INITIAL_LAYOUT`; `createEmptySeatStates` ensures all seats exist with `userId:null/status:present`. `normalizeSeatStates` tolerates legacy shapes.
+- LocalStorage keys: users `lab-users-data`, seats `lab-seat-data`, sessions `lab-stay-sessions`, last reset `lab-last-reset-date`, MQTT config `lab-mqtt-config`.
+- `useLabStorage` owns users/seats and provides `makeExportData`/`makeImportHandler`; exports JSON version 2 containing users, seatStates, sessions, lastResetDate, mqttConfig. Import validates categories (`Staff|D|M|B|Other`) and session shapes before mutating state.
 
-## Stay Tracking & Leaderboard
+## Seat Actions & Dragging
 
-- `useStayTracking` ([src/hooks/useStayTracking.ts](src/hooks/useStayTracking.ts)) owns sessions and weekly totals. Sessions store `start/end` per seat/user; weekly buckets start Monday (Sun handled as previous week).
-- Daily cleanup runs after 06:00 to clear seats; week changes close open sessions and reopen them for the new week. `startSession/endSession` must be called alongside seat state changes to keep stats accurate.
-- Leaderboard modal consumes `leaderboardRows`, `selectedWeekLabel`, and navigation guards (`disablePrev/Next/ThisWeek`).
+- `useSeatAssignment` handles seat clicks, leave, away toggle, random assignment, greetings. Always pairs seat changes with `startSession/endSession`; `finalizeAllSeats` closes every active session (used in reset).
+- `assignRandomSeatForUser` clears previous seats for that user, ends old session, assigns an empty seat, and starts a new session while triggering greetings.
+- `useSeatDrag` swaps or moves occupants on drop and calls `endSession/startSession` for both seats to keep history accurate; `startedAt` set to now after any move.
 
-## Train Info & Data Loading
+## Stay Tracking & Timers
 
-- Train times stored as CSV in [src/data](src/data) and imported with `?raw`; parse with `parseCSV` ([src/utils/csvParser.ts](src/utils/csvParser.ts)). Only destinations `谷上` or `新神戸` are accepted; lines starting with `#` ignored.
-- [src/components/TrainInfo.tsx](src/components/TrainInfo.tsx) picks weekday vs holiday/weekend using `japanese-holidays`; shows next 3 departures after adding a 10-minute walk.
+- `useStayTracking` keeps all stay sessions and weekly totals (week starts Monday; Sunday counts to previous). Timeline buckets are 30 minutes for per-seat day view.
+- Reset window 22:30–06:00: first tick in the window closes open sessions, clears seats (`createEmptySeatStates`), and records `lab-last-reset-date` to avoid double reset. Week change closes open sessions and reopens ones matching current seats.
+- Leaderboard/labels derive from `leaderboardRows`, `selectedWeekLabel`, and navigation flags (`disablePrevWeek/NextWeek/ThisWeek`); `stayDurationDisplay` shows current-week per-user summaries.
 
-## UI Components
+## View & Data Sources
 
-- Seats: [src/components/Seat.tsx](src/components/Seat.tsx) color-codes empty/away/present; click bubbles `seatId` to parent.
-- Modals: `UserSelectModal` and `RandomSeatModal` group users by category and display stay time summaries. `AdminModal` manages members and edits recent 50 stay sessions (validates start/end order, uses local timezone inputs). `NewsVideo` embeds NHK YouTube muted.
+- `useSeatViewModel` builds `seatCards` with user info and today’s timeline overlay and lists `availableUsers` vs occupied ids; keep this in sync when adding seat states.
+- Train info uses CSVs in [src/data](src/data) parsed via `parseCSV` ([src/utils/csvParser.ts](src/utils/csvParser.ts)); only `谷上`/`新神戸` destinations accepted, lines starting with `#` skipped. [src/components/TrainInfo.tsx](src/components/TrainInfo.tsx) chooses weekday/holiday via `japanese-holidays` and shows next 3 departures after adding 10-minute walk.
+- Environment telemetry via `useEnvTelemetry` (MQTT over ws/wss). Config stored in `lab-mqtt-config`; invalid/empty config clears telemetry. [src/components/EnvInfo.tsx](src/components/EnvInfo.tsx) renders values.
+
+## UI & Modals
+
+- Seats rendered by [src/components/SeatGrid.tsx](src/components/SeatGrid.tsx) + [src/components/Seat.tsx](src/components/Seat.tsx); click/drag bubble seatId to parents.
+- [src/components/UserSelectModal.tsx](src/components/UserSelectModal.tsx) groups users by category and shows stay summaries; [src/components/ActionModal.tsx](src/components/ActionModal.tsx) toggles away/leave.
+- [src/components/RandomSeatModal.tsx](src/components/RandomSeatModal.tsx) runs random assignment and reports chosen seat; [src/components/LeaderboardModal.tsx](src/components/LeaderboardModal.tsx) navigates weeks.
+- [src/components/AdminModal.tsx](src/components/AdminModal.tsx) manages members, edits recent 50 sessions with validation (start<end), handles reminder time/duration, MQTT config, import/export.
 
 ## Workflows
 
-- Lint `npm run lint`; unit tests `npm test` / `npm run test:watch` (Vitest, jsdom, React Testing Library); e2e `npm run test:e2e` (Playwright, specs in `e2e/`). Build `npm run build`; preview `npm run preview`.
-- Avoid using `fs`/server APIs; Vite handles static CSVs via raw imports.
+- Lint `npm run lint`; unit tests `npm test` / `npm run test:watch` (Vitest + RTL + jsdom); e2e `npm run test:e2e` (Playwright in `e2e/`). Build `npm run build`; preview `npm run preview`.
+- Avoid server-side APIs/`fs`; Vite serves static CSVs via `?raw` imports.
 
-## Patterns & Gotchas
+## Gotchas
 
-- When modifying seat actions, always sync both `seatStates` and stay sessions to avoid skewed leaderboard totals.
-- Resets: `handleReset` clears seats after confirming and closes open sessions; week/day transitions happen in `useStayTracking` interval.
-- Keep Tailwind class strings readable; prefer template literals for dynamic states (away/present, selection highlighting).
-- CSV additions must follow `Hour,Minute,Destination` format; otherwise `parseCSV` drops lines silently.
+- Always update both `seatStates` and stay sessions when moving/ending seats (click, random, drag, reset) to keep leaderboard/timeline correct.
+- Week/day transitions are timer-driven inside `useStayTracking`; avoid separate timers that fight with its interval.
+- Keep Tailwind class strings readable (template literals for dynamic states). CSV rows must be `Hour,Minute,Destination` or `parseCSV` will drop them.
