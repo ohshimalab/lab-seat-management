@@ -11,13 +11,13 @@ import { useLabStorage } from "./hooks/useLabStorage";
 import { useSeatDrag } from "./hooks/useSeatDrag";
 import { useSeatAssignment } from "./hooks/useSeatAssignment";
 import { useSeatViewModel } from "./hooks/useSeatViewModel";
+import { useAdminActions } from "./hooks/useAdminActions";
 import {
   INITIAL_LAYOUT,
   DEFAULT_USERS,
   createEmptySeatStates,
   normalizeSeatStates,
 } from "./config/layout";
-import type { UserCategory } from "./types";
 
 function App() {
   const {
@@ -124,29 +124,14 @@ function App() {
     showFirstArrival,
   });
 
-  const handleAddUser = (name: string, category: UserCategory) => {
-    setUsers((prev) => [
-      ...prev,
-      { id: Date.now().toString(), name, category },
-    ]);
-  };
-
-  const handleRemoveUser = (userId: string) => {
-    Object.keys(seatStates).forEach((seatId) => {
-      const seat = seatStates[seatId];
-      if (seat?.userId === userId) endSession(userId, seatId, Date.now());
-    });
-    setSeatStates((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((key) => {
-        if (next[key]?.userId === userId) {
-          next[key] = { userId: null, status: "present", startedAt: null };
-        }
-      });
-      return next;
-    });
-    setUsers((prev) => prev.filter((u) => u.id !== userId));
-  };
+  const { handleAddUser, handleRemoveUser, handleReset } = useAdminActions({
+    setUsers,
+    seatStates,
+    setSeatStates,
+    endSession,
+    finalizeAllSeats,
+    createEmptySeatStates,
+  });
 
   const {
     draggingSeatId,
@@ -160,14 +145,6 @@ function App() {
     startSession,
     endSession,
   });
-
-  const handleReset = () => {
-    if (confirm("全ての席状況をリセットしますか？")) {
-      const now = Date.now();
-      finalizeAllSeats(now);
-      setSeatStates(createEmptySeatStates());
-    }
-  };
 
   const exportData = useMemo(
     () =>
