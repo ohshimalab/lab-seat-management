@@ -9,11 +9,12 @@ import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
 import { useStayTracking } from "./hooks/useStayTracking";
-import { FIRST_ARRIVAL_KEY, useNotifications } from "./hooks/useNotifications";
+import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
 import { useEnvTelemetry } from "./hooks/useEnvTelemetry";
 import { useLabStorage } from "./hooks/useLabStorage";
 import { useSeatDrag } from "./hooks/useSeatDrag";
+import { useSeatAssignment } from "./hooks/useSeatAssignment";
 import type {
   SeatLayout,
   User,
@@ -90,25 +91,8 @@ function App() {
   const { mqttConfig, envTelemetry, handleMqttConfigChange, setMqttConfig } =
     useEnvTelemetry();
 
-  const finalizeSeatOccupant = (seatId: string, now: number) => {
-    const seat = seatStates[seatId];
-    if (seat?.userId) endSession(seat.userId, seatId, now);
-  };
-
-  const finalizeAllSeats = (now: number) => {
-    Object.keys(seatStates).forEach((seatId) =>
-      finalizeSeatOccupant(seatId, now)
-    );
-  };
-
-  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [randomUserId, setRandomUserId] = useState<string | null>(null);
-  const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
 
   const seatedUserIds = useMemo(
     () =>
@@ -190,133 +174,35 @@ function App() {
     closeHomeReminder,
   } = useHomeReminder({ hasSeatedUser });
 
-  const maybeShowWeeklyGreeting = (userId: string) => {
-    if (!hasUserSessionThisWeek(userId)) {
-      showWeeklyGreeting();
-    }
-  };
-
-  const isWeekendDay = (date: Date) => {
-    const day = date.getDay();
-    return day === 5 || day === 6 || day === 0; // Fri, Sat, Sun
-  };
-
-  const maybeShowFirstArrivalGreeting = (userId: string, nowDate: Date) => {
-    const todayKey = nowDate.toISOString().slice(0, 10);
-    const recorded = localStorage.getItem(FIRST_ARRIVAL_KEY);
-    if (recorded === todayKey) return;
-    const name = users.find((u) => u.id === userId)?.name || "";
-    showFirstArrival(name);
-    localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
-  };
-
-  const handleSeatClick = (seatId: string) => {
-    const currentUserId = seatStates[seatId]?.userId || null;
-    setSelectedSeatId(seatId);
-    if (currentUserId) setIsActionModalOpen(true);
-    else setIsUserModalOpen(true);
-  };
-
-  const handleLeaveSeat = () => {
-    if (!selectedSeatId) return;
-    const nowDate = new Date();
-    const now = nowDate.getTime();
-    finalizeSeatOccupant(selectedSeatId, now);
-    setSeatStates((prev) => ({
-      ...prev,
-      [selectedSeatId]: { userId: null, status: "present", startedAt: null },
-    }));
-    if (isWeekendDay(nowDate)) showWeekendFarewell();
-    setIsActionModalOpen(false);
-    setSelectedSeatId(null);
-  };
-
-  const handleUserSelect = (user: User) => {
-    if (!selectedSeatId) return;
-    const nowDate = new Date();
-    const now = nowDate.getTime();
-    setSeatStates((prev) => ({
-      ...prev,
-      [selectedSeatId]: {
-        userId: user.id,
-        status: "present",
-        startedAt: now,
-      },
-    }));
-    maybeShowFirstArrivalGreeting(user.id, nowDate);
-    maybeShowWeeklyGreeting(user.id);
-    startSession(user.id, selectedSeatId, now);
-    setIsUserModalOpen(false);
-    setSelectedSeatId(null);
-  };
-
-  const assignRandomSeatForUser = (user: User) => {
-    const nowDate = new Date();
-    const now = nowDate.getTime();
-    const currentSeatId = Object.entries(seatStates).find(
-      ([, value]) => value.userId === user.id
-    )?.[0];
-    if (currentSeatId) endSession(user.id, currentSeatId, now);
-
-    let chosenSeat: string | null = null;
-    setSeatStates((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((key) => {
-        if (next[key]?.userId === user.id) {
-          next[key] = { userId: null, status: "present", startedAt: null };
-        }
-      });
-      const emptySeats = Object.entries(next)
-        .filter(([, value]) => value.userId === null)
-        .map(([seatId]) => seatId);
-      if (emptySeats.length === 0) return prev;
-      chosenSeat =
-        emptySeats[Math.floor(Math.random() * emptySeats.length)] || null;
-      if (!chosenSeat) return prev;
-      next[chosenSeat] = {
-        userId: user.id,
-        status: "present",
-        startedAt: now,
-      };
-      return next;
-    });
-    if (chosenSeat) {
-      maybeShowFirstArrivalGreeting(user.id, nowDate);
-      maybeShowWeeklyGreeting(user.id);
-      startSession(user.id, chosenSeat, now);
-    }
-    setRandomUserId(user.id);
-    setRandomSeatId(chosenSeat);
-  };
-
-  const handleOpenRandom = () => {
-    setRandomUserId(null);
-    setRandomSeatId(null);
-    setIsRandomModalOpen(true);
-  };
-
-  const handleRandomSelect = (user: User) => {
-    assignRandomSeatForUser(user);
-  };
-
-  const handleToggleAway = () => {
-    if (!selectedSeatId) return;
-    setSeatStates((prev) => {
-      const current = prev[selectedSeatId] || {
-        userId: null,
-        status: "present",
-      };
-      if (!current.userId) return prev;
-      const nextStatus: SeatStatus =
-        current.status === "away" ? "present" : "away";
-      return {
-        ...prev,
-        [selectedSeatId]: { ...current, status: nextStatus },
-      };
-    });
-    setIsActionModalOpen(false);
-    setSelectedSeatId(null);
-  };
+  const {
+    selectedSeatId,
+    isUserModalOpen,
+    isActionModalOpen,
+    isRandomModalOpen,
+    randomUserId,
+    randomSeatId,
+    handleSeatClick,
+    handleUserSelect,
+    handleLeaveSeat,
+    handleToggleAway,
+    handleOpenRandom,
+    handleRandomSelect,
+    closeUserModal,
+    closeActionModal,
+    closeRandomModal,
+    finalizeAllSeats,
+    getSelectedUserName,
+  } = useSeatAssignment({
+    users,
+    seatStates,
+    setSeatStates,
+    hasUserSessionThisWeek,
+    startSession,
+    endSession,
+    showWeeklyGreeting,
+    showWeekendFarewell,
+    showFirstArrival,
+  });
 
   const handleAddUser = (name: string, category: UserCategory) => {
     setUsers((prev) => [
@@ -361,12 +247,6 @@ function App() {
       finalizeAllSeats(now);
       setSeatStates(createEmptySeatStates());
     }
-  };
-
-  const getSelectedUserName = () => {
-    if (!selectedSeatId) return "";
-    const userId = seatStates[selectedSeatId]?.userId || null;
-    return users.find((u) => u.id === userId)?.name || "";
   };
 
   const exportData = useMemo(
@@ -559,7 +439,7 @@ function App() {
         users={availableUsers}
         stayDurations={stayDurationDisplay}
         onSelect={handleUserSelect}
-        onClose={() => setIsUserModalOpen(false)}
+        onClose={closeUserModal}
       />
       <ActionModal
         isOpen={isActionModalOpen}
@@ -570,7 +450,7 @@ function App() {
         }
         onToggleAway={handleToggleAway}
         onLeave={handleLeaveSeat}
-        onClose={() => setIsActionModalOpen(false)}
+        onClose={closeActionModal}
       />
       <AdminModal
         isOpen={isAdminModalOpen}
@@ -607,7 +487,7 @@ function App() {
         hasAnySeat={hasEmptySeat || Boolean(randomUserId)}
         stayDurations={stayDurationDisplay}
         onSelectUser={handleRandomSelect}
-        onClose={() => setIsRandomModalOpen(false)}
+        onClose={closeRandomModal}
       />
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
