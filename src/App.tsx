@@ -184,6 +184,7 @@ function App() {
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
+  const [isWeeklyGreetingOpen, setIsWeeklyGreetingOpen] = useState(false);
 
   const seatedUserIds = useMemo(
     () =>
@@ -253,6 +254,12 @@ function App() {
       String(reminderDuration)
     );
   }, [reminderDuration]);
+
+  useEffect(() => {
+    if (!isWeeklyGreetingOpen) return;
+    const id = window.setTimeout(() => setIsWeeklyGreetingOpen(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [isWeeklyGreetingOpen]);
 
   const isMqttConfigValid = (config: MqttConfig) =>
     Boolean(config.serverUrl && config.clientName);
@@ -352,6 +359,7 @@ function App() {
     disableNextWeek,
     disableThisWeek,
     stayDurationDisplay,
+    hasUserSessionThisWeek,
     startSession,
     endSession,
     addSessionManual,
@@ -370,6 +378,12 @@ function App() {
     setSeatStates,
     createEmptySeatStates,
   });
+
+  const maybeShowWeeklyGreeting = (userId: string) => {
+    if (!hasUserSessionThisWeek(userId)) {
+      setIsWeeklyGreetingOpen(true);
+    }
+  };
 
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
@@ -401,6 +415,7 @@ function App() {
         startedAt: now,
       },
     }));
+    maybeShowWeeklyGreeting(user.id);
     startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
@@ -435,7 +450,10 @@ function App() {
       };
       return next;
     });
-    if (chosenSeat) startSession(user.id, chosenSeat, now);
+    if (chosenSeat) {
+      maybeShowWeeklyGreeting(user.id);
+      startSession(user.id, chosenSeat, now);
+    }
     setRandomUserId(user.id);
     setRandomSeatId(chosenSeat);
   };
@@ -777,6 +795,26 @@ function App() {
           </div>
         </div>
       </div>
+      {isWeeklyGreetingOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-14 flex items-center gap-3 rounded-full bg-emerald-600 px-4 py-3 text-white shadow-xl">
+            <span className="text-xl" aria-hidden="true">
+              💪
+            </span>
+            <span className="font-semibold tracking-tight">
+              今週も頑張りましょう！
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsWeeklyGreetingOpen(false)}
+              className="text-sm font-bold text-white/80 hover:text-white"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <UserSelectModal
         isOpen={isUserModalOpen}
         users={availableUsers}

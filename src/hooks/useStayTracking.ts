@@ -363,6 +363,20 @@ export function useStayTracking({
     return map;
   }, [users, weekUserTotals, weekKey]);
 
+  const usersWithSessionsThisWeek = useMemo(() => {
+    const set = new Set<string>();
+    const currentWeek = weekKey;
+    sessions.forEach((session) => {
+      if (getWeekStartKey(new Date(session.start)) === currentWeek) {
+        set.add(session.userId);
+      }
+    });
+    return set;
+  }, [sessions, weekKey]);
+
+  const hasUserSessionThisWeek = (userId: string) =>
+    usersWithSessionsThisWeek.has(userId);
+
   const todaySeatTimeline = useMemo(() => {
     const bucketMs = TIMELINE_BUCKET_MINUTES * 60 * 1000;
     const startOfDay = new Date(nowMs);
@@ -604,6 +618,7 @@ export function useStayTracking({
     disableThisWeek,
     stayDurationDisplay,
     todaySeatTimeline,
+    hasUserSessionThisWeek,
     startSession,
     endSession,
     addSessionManual,
