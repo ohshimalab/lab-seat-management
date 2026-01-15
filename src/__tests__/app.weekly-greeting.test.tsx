@@ -7,6 +7,11 @@ const seatYamada = async () => {
   fireEvent.click(screen.getByRole("button", { name: /Yamada/ }));
 };
 
+const seatTanaka = async (seatLabel = "R12") => {
+  fireEvent.click(screen.getByText(seatLabel));
+  fireEvent.click(screen.getByRole("button", { name: /Tanaka/ }));
+};
+
 describe("weekly greeting popup", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -60,6 +65,46 @@ describe("weekly greeting popup", () => {
       expect(screen.queryByText("今週も頑張りましょう！")).toBeNull();
     }
   );
+});
+
+describe("first arrival popup", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-10T09:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("congratulates the first arrival of the day and auto-hides", () => {
+    render(<App />);
+
+    seatYamada();
+
+    expect(screen.getByText(/一番乗り/)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(screen.queryByText(/一番乗り/)).toBeNull();
+  });
+
+  it("does not repeat for the second seated person on the same day", () => {
+    render(<App />);
+
+    seatYamada();
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    seatTanaka();
+
+    expect(screen.queryByText(/一番乗り/)).toBeNull();
+  });
 });
 
 describe("weekend farewell popup", () => {

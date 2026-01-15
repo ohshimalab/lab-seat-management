@@ -47,6 +47,8 @@ const EMPTY_TELEMETRY = {
   updatedAt: null as number | null,
 };
 
+const FIRST_ARRIVAL_KEY = "lab-first-arrival-date";
+
 const createEmptySeatStates = () => {
   const base: Record<string, SeatState> = {};
   INITIAL_LAYOUT.forEach((row) => {
@@ -186,6 +188,8 @@ function App() {
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
   const [isWeeklyGreetingOpen, setIsWeeklyGreetingOpen] = useState(false);
   const [isWeekendFarewellOpen, setIsWeekendFarewellOpen] = useState(false);
+  const [isFirstArrivalOpen, setIsFirstArrivalOpen] = useState(false);
+  const [firstArrivalName, setFirstArrivalName] = useState("");
 
   const seatedUserIds = useMemo(
     () =>
@@ -267,6 +271,12 @@ function App() {
     const id = window.setTimeout(() => setIsWeekendFarewellOpen(false), 4000);
     return () => window.clearTimeout(id);
   }, [isWeekendFarewellOpen]);
+
+  useEffect(() => {
+    if (!isFirstArrivalOpen) return;
+    const id = window.setTimeout(() => setIsFirstArrivalOpen(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [isFirstArrivalOpen]);
 
   const isMqttConfigValid = (config: MqttConfig) =>
     Boolean(config.serverUrl && config.clientName);
@@ -397,6 +407,16 @@ function App() {
     return day === 5 || day === 6 || day === 0; // Fri, Sat, Sun
   };
 
+  const maybeShowFirstArrivalGreeting = (userId: string, nowDate: Date) => {
+    const todayKey = nowDate.toISOString().slice(0, 10);
+    const recorded = localStorage.getItem(FIRST_ARRIVAL_KEY);
+    if (recorded === todayKey) return;
+    const name = users.find((u) => u.id === userId)?.name || "";
+    setFirstArrivalName(name);
+    setIsFirstArrivalOpen(true);
+    localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
+  };
+
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
     setSelectedSeatId(seatId);
@@ -420,7 +440,8 @@ function App() {
 
   const handleUserSelect = (user: User) => {
     if (!selectedSeatId) return;
-    const now = Date.now();
+    const nowDate = new Date();
+    const now = nowDate.getTime();
     setSeatStates((prev) => ({
       ...prev,
       [selectedSeatId]: {
@@ -429,6 +450,7 @@ function App() {
         startedAt: now,
       },
     }));
+    maybeShowFirstArrivalGreeting(user.id, nowDate);
     maybeShowWeeklyGreeting(user.id);
     startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
@@ -436,7 +458,8 @@ function App() {
   };
 
   const assignRandomSeatForUser = (user: User) => {
-    const now = Date.now();
+    const nowDate = new Date();
+    const now = nowDate.getTime();
     const currentSeatId = Object.entries(seatStates).find(
       ([, value]) => value.userId === user.id
     )?.[0];
@@ -465,6 +488,7 @@ function App() {
       return next;
     });
     if (chosenSeat) {
+      maybeShowFirstArrivalGreeting(user.id, nowDate);
       maybeShowWeeklyGreeting(user.id);
       startSession(user.id, chosenSeat, now);
     }
@@ -821,6 +845,28 @@ function App() {
             <button
               type="button"
               onClick={() => setIsWeeklyGreetingOpen(false)}
+              className="text-sm font-bold text-white/80 hover:text-white"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      {isFirstArrivalOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-6 flex items-center gap-3 rounded-full bg-amber-600 px-4 py-3 text-white shadow-xl">
+            <span className="text-xl" aria-hidden="true">
+              🚀
+            </span>
+            <span className="font-semibold tracking-tight">
+              {firstArrivalName
+                ? `${firstArrivalName}さん、今日の一番乗り！`
+                : "今日の一番乗り！"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsFirstArrivalOpen(false)}
               className="text-sm font-bold text-white/80 hover:text-white"
               aria-label="閉じる"
             >
