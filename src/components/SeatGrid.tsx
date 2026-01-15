@@ -11,6 +11,14 @@ import type {
 interface SeatGridProps {
   layout: SeatLayout[];
   seatStates: Record<string, SeatState>;
+  seatCards?: Record<
+    string,
+    {
+      seatState: SeatState;
+      user: User | null;
+      timeline?: SeatTimelineSlice[];
+    }
+  >;
   users: User[];
   draggingSeatId: string | null;
   todaySeatTimeline: Record<string, SeatTimelineSlice[]>;
@@ -31,6 +39,7 @@ interface SeatRowProps extends Omit<SeatGridProps, "layout"> {
 const SeatRow: React.FC<SeatRowProps> = ({
   row,
   seatStates,
+  seatCards,
   users,
   draggingSeatId,
   todaySeatTimeline,
@@ -47,14 +56,19 @@ const SeatRow: React.FC<SeatRowProps> = ({
       </h2>
       <div className="flex flex-wrap gap-2">
         {row.seats.map((seatId) => {
-          const seatState = seatStates[seatId] || {
-            userId: null,
-            status: "present" as SeatStatus,
-            startedAt: null,
-          };
-          const currentUser = seatState.userId
+          const card = seatCards?.[seatId];
+          const seatState = card?.seatState ||
+            seatStates[seatId] || {
+              userId: null,
+              status: "present" as SeatStatus,
+              startedAt: null,
+            };
+          const currentUser = card?.user
+            ? card.user
+            : seatState.userId
             ? users.find((u) => u.id === seatState.userId) || null
             : null;
+          const timeline = card?.timeline || todaySeatTimeline[seatId];
           return (
             <Seat
               key={seatId}
@@ -67,7 +81,7 @@ const SeatRow: React.FC<SeatRowProps> = ({
               onDragOver={onSeatDragOver}
               onDrop={onSeatDrop}
               onDragEnd={onSeatDragEnd}
-              timelineSlices={todaySeatTimeline[seatId]}
+              timelineSlices={timeline}
             />
           );
         })}

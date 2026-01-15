@@ -8,6 +8,7 @@ import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
 import { SeatGrid } from "./components/SeatGrid";
+import { EnvInfo } from "./components/EnvInfo";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
@@ -15,6 +16,7 @@ import { useEnvTelemetry } from "./hooks/useEnvTelemetry";
 import { useLabStorage } from "./hooks/useLabStorage";
 import { useSeatDrag } from "./hooks/useSeatDrag";
 import { useSeatAssignment } from "./hooks/useSeatAssignment";
+import { useSeatViewModel } from "./hooks/useSeatViewModel";
 import type {
   SeatLayout,
   User,
@@ -94,36 +96,6 @@ function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
 
-  const seatedUserIds = useMemo(
-    () =>
-      Object.values(seatStates)
-        .map((s) => s.userId)
-        .filter((id): id is string => id !== null),
-    [seatStates]
-  );
-  const availableUsers = useMemo(
-    () => users.filter((user) => !seatedUserIds.includes(user.id)),
-    [users, seatedUserIds]
-  );
-
-  const hasEmptySeat = useMemo(
-    () => Object.values(seatStates).some((s) => s.userId === null),
-    [seatStates]
-  );
-
-  const hasSeatedUser = seatedUserIds.length > 0;
-
-  const tempDisplay =
-    envTelemetry.temp === null ? "--" : envTelemetry.temp.toFixed(1);
-  const humDisplay =
-    envTelemetry.hum === null ? "--" : envTelemetry.hum.toFixed(1);
-  const updatedLabel = envTelemetry.updatedAt
-    ? new Date(envTelemetry.updatedAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null;
-
   const {
     selectedWeekLabel,
     leaderboardRows,
@@ -150,6 +122,11 @@ function App() {
     setSeatStates,
     createEmptySeatStates,
   });
+
+  const { seatedUserIds, availableUsers, hasEmptySeat, seatCards } =
+    useSeatViewModel({ seatStates, users, todaySeatTimeline });
+
+  const hasSeatedUser = seatedUserIds.length > 0;
 
   const {
     weeklyGreetingOpen,
@@ -275,24 +252,7 @@ function App() {
           <h1 className="text-xl md:text-2xl font-bold text-gray-800">
             大島研究室
           </h1>
-          <div className="flex items-start gap-3 text-xs md:text-sm text-gray-700 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100">
-            <div className="flex flex-col gap-0.5 leading-tight">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">🌡️</span>
-                <span className="font-mono text-gray-900">{tempDisplay}°C</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">💧</span>
-                <span className="font-mono text-gray-900">{humDisplay}%</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-0.5 leading-tight text-[11px] text-gray-500">
-              {envTelemetry.location && <span>({envTelemetry.location})</span>}
-              {updatedLabel && (
-                <span className="text-gray-400">更新 {updatedLabel}</span>
-              )}
-            </div>
-          </div>
+          <EnvInfo envTelemetry={envTelemetry} />
         </div>
         <div className="flex gap-2 md:gap-3">
           <button
@@ -326,6 +286,7 @@ function App() {
           <SeatGrid
             layout={INITIAL_LAYOUT}
             seatStates={seatStates}
+            seatCards={seatCards}
             users={users}
             draggingSeatId={draggingSeatId}
             todaySeatTimeline={todaySeatTimeline}
