@@ -4,7 +4,9 @@ import type { SeatState, User, UserCategory } from "../types";
 interface Params {
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   seatStates: Record<string, SeatState>;
-  setSeatStates: React.Dispatch<React.SetStateAction<Record<string, SeatState>>>;
+  setSeatStates: React.Dispatch<
+    React.SetStateAction<Record<string, SeatState>>
+  >;
   endSession: (userId: string, seatId: string, endedAt: number) => void;
   finalizeAllSeats: (now: number) => void;
   createEmptySeatStates: () => Record<string, SeatState>;

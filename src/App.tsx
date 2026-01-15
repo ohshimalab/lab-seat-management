@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { HeaderBar } from "./components/HeaderBar";
 import { MainPanels } from "./components/MainPanels";
 import { ModalsLayer } from "./components/ModalsLayer";
@@ -12,6 +12,7 @@ import { useSeatDrag } from "./hooks/useSeatDrag";
 import { useSeatAssignment } from "./hooks/useSeatAssignment";
 import { useSeatViewModel } from "./hooks/useSeatViewModel";
 import { useAdminActions } from "./hooks/useAdminActions";
+import { useStorageIO } from "./hooks/useStorageIO";
 import {
   INITIAL_LAYOUT,
   DEFAULT_USERS,
@@ -146,24 +147,15 @@ function App() {
     endSession,
   });
 
-  const exportData = useMemo(
-    () =>
-      makeExportData({
-        sessions,
-        lastResetDate,
-        mqttConfig,
-      }),
-    [makeExportData, sessions, lastResetDate, mqttConfig]
-  );
-
-  const handleImportData = useMemo(
-    () =>
-      makeImportHandler({
-        importTrackingData,
-        setMqttConfig,
-      }),
-    [makeImportHandler, importTrackingData, setMqttConfig]
-  );
+  const { exportData, handleImportData } = useStorageIO({
+    makeExportData,
+    sessions,
+    lastResetDate,
+    mqttConfig,
+    makeImportHandler,
+    importTrackingData,
+    setMqttConfig,
+  });
 
   const actionSeatId = selectedSeatId || "";
   const isSelectedSeatAway = selectedSeatId
