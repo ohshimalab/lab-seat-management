@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
 import { ActionModal } from "./components/ActionModal";
 import { RandomSeatModal } from "./components/RandomSeatModal";
@@ -8,6 +7,7 @@ import { TrainInfo } from "./components/TrainInfo";
 import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
+import { SeatGrid } from "./components/SeatGrid";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
@@ -323,45 +323,18 @@ function App() {
       </div>
       <div className="flex flex-1 gap-3 md:gap-4 max-w-7xl mx-auto w-full h-full overflow-hidden">
         <div className="flex-1 min-w-0 bg-white p-4 md:p-5 rounded-xl shadow-lg h-full overflow-y-auto">
-          {INITIAL_LAYOUT.map((row) => (
-            <div
-              key={row.rowId}
-              className="mb-0.5 border-b border-gray-100 pb-4 last:border-0 last:mb-0"
-            >
-              <h2 className="text-xl font-semibold text-gray-500 mb-2 pl-2">
-                {row.rowId} 列
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {row.seats.map((seatId) => {
-                  const seatState = seatStates[seatId] || {
-                    userId: null,
-                    status: "present" as SeatStatus,
-                    startedAt: null,
-                  };
-                  const currentUser = seatState.userId
-                    ? users.find((u) => u.id === seatState.userId) || null
-                    : null;
-                  return (
-                    <Seat
-                      key={seatId}
-                      seatId={seatId}
-                      currentUser={currentUser}
-                      status={seatState.status}
-                      onClick={handleSeatClick}
-                      isDroppable={Boolean(
-                        draggingSeatId && draggingSeatId !== seatId
-                      )}
-                      onDragStart={handleSeatDragStart}
-                      onDragOver={handleSeatDragOver}
-                      onDrop={handleSeatDrop}
-                      onDragEnd={handleSeatDragEnd}
-                      timelineSlices={todaySeatTimeline[seatId]}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <SeatGrid
+            layout={INITIAL_LAYOUT}
+            seatStates={seatStates}
+            users={users}
+            draggingSeatId={draggingSeatId}
+            todaySeatTimeline={todaySeatTimeline}
+            onSeatClick={handleSeatClick}
+            onSeatDragStart={handleSeatDragStart}
+            onSeatDragOver={handleSeatDragOver}
+            onSeatDrop={handleSeatDrop}
+            onSeatDragEnd={handleSeatDragEnd}
+          />
         </div>
         <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
           <div className="flex-1 min-h-0">
