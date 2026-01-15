@@ -11,6 +11,7 @@ import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
 import { useStayTracking } from "./hooks/useStayTracking";
+import { FIRST_ARRIVAL_KEY, useNotifications } from "./hooks/useNotifications";
 import type {
   User,
   SeatLayout,
@@ -46,8 +47,6 @@ const EMPTY_TELEMETRY = {
   location: "",
   updatedAt: null as number | null,
 };
-
-const FIRST_ARRIVAL_KEY = "lab-first-arrival-date";
 
 const createEmptySeatStates = () => {
   const base: Record<string, SeatState> = {};
@@ -186,10 +185,6 @@ function App() {
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
-  const [isWeeklyGreetingOpen, setIsWeeklyGreetingOpen] = useState(false);
-  const [isWeekendFarewellOpen, setIsWeekendFarewellOpen] = useState(false);
-  const [isFirstArrivalOpen, setIsFirstArrivalOpen] = useState(false);
-  const [firstArrivalName, setFirstArrivalName] = useState("");
 
   const seatedUserIds = useMemo(
     () =>
@@ -259,24 +254,6 @@ function App() {
       String(reminderDuration)
     );
   }, [reminderDuration]);
-
-  useEffect(() => {
-    if (!isWeeklyGreetingOpen) return;
-    const id = window.setTimeout(() => setIsWeeklyGreetingOpen(false), 4000);
-    return () => window.clearTimeout(id);
-  }, [isWeeklyGreetingOpen]);
-
-  useEffect(() => {
-    if (!isWeekendFarewellOpen) return;
-    const id = window.setTimeout(() => setIsWeekendFarewellOpen(false), 4000);
-    return () => window.clearTimeout(id);
-  }, [isWeekendFarewellOpen]);
-
-  useEffect(() => {
-    if (!isFirstArrivalOpen) return;
-    const id = window.setTimeout(() => setIsFirstArrivalOpen(false), 4000);
-    return () => window.clearTimeout(id);
-  }, [isFirstArrivalOpen]);
 
   const isMqttConfigValid = (config: MqttConfig) =>
     Boolean(config.serverUrl && config.clientName);
@@ -396,9 +373,22 @@ function App() {
     createEmptySeatStates,
   });
 
+  const {
+    weeklyGreetingOpen,
+    weekendFarewellOpen,
+    firstArrivalOpen,
+    firstArrivalName,
+    showWeeklyGreeting,
+    hideWeeklyGreeting,
+    showWeekendFarewell,
+    hideWeekendFarewell,
+    showFirstArrival,
+    hideFirstArrival,
+  } = useNotifications();
+
   const maybeShowWeeklyGreeting = (userId: string) => {
     if (!hasUserSessionThisWeek(userId)) {
-      setIsWeeklyGreetingOpen(true);
+      showWeeklyGreeting();
     }
   };
 
@@ -412,8 +402,7 @@ function App() {
     const recorded = localStorage.getItem(FIRST_ARRIVAL_KEY);
     if (recorded === todayKey) return;
     const name = users.find((u) => u.id === userId)?.name || "";
-    setFirstArrivalName(name);
-    setIsFirstArrivalOpen(true);
+    showFirstArrival(name);
     localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
   };
 
@@ -433,7 +422,7 @@ function App() {
       ...prev,
       [selectedSeatId]: { userId: null, status: "present", startedAt: null },
     }));
-    if (isWeekendDay(nowDate)) setIsWeekendFarewellOpen(true);
+    if (isWeekendDay(nowDate)) showWeekendFarewell();
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
   };
@@ -833,7 +822,7 @@ function App() {
           </div>
         </div>
       </div>
-      {isWeeklyGreetingOpen && (
+      {weeklyGreetingOpen && (
         <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
           <div className="pointer-events-auto mt-14 flex items-center gap-3 rounded-full bg-emerald-600 px-4 py-3 text-white shadow-xl">
             <span className="text-xl" aria-hidden="true">
@@ -844,16 +833,16 @@ function App() {
             </span>
             <button
               type="button"
-              onClick={() => setIsWeeklyGreetingOpen(false)}
+              onClick={hideWeeklyGreeting}
               className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="閉じる"
+              aria-label="通知を閉じる"
             >
               ✕
             </button>
           </div>
         </div>
       )}
-      {isFirstArrivalOpen && (
+      {firstArrivalOpen && (
         <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
           <div className="pointer-events-auto mt-6 flex items-center gap-3 rounded-full bg-amber-600 px-4 py-3 text-white shadow-xl">
             <span className="text-xl" aria-hidden="true">
@@ -866,16 +855,16 @@ function App() {
             </span>
             <button
               type="button"
-              onClick={() => setIsFirstArrivalOpen(false)}
+              onClick={hideFirstArrival}
               className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="閉じる"
+              aria-label="通知を閉じる"
             >
               ✕
             </button>
           </div>
         </div>
       )}
-      {isWeekendFarewellOpen && (
+      {weekendFarewellOpen && (
         <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
           <div className="pointer-events-auto mt-28 flex items-center gap-3 rounded-full bg-sky-700 px-4 py-3 text-white shadow-xl">
             <span className="text-xl" aria-hidden="true">
@@ -886,9 +875,9 @@ function App() {
             </span>
             <button
               type="button"
-              onClick={() => setIsWeekendFarewellOpen(false)}
+              onClick={hideWeekendFarewell}
               className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="閉じる"
+              aria-label="通知を閉じる"
             >
               ✕
             </button>
