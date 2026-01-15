@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import type React from "react";
 import { Seat } from "./components/Seat";
 import { UserSelectModal } from "./components/UserSelectModal";
@@ -12,14 +12,13 @@ import { HomeReminderModal } from "./components/HomeReminderModal";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { FIRST_ARRIVAL_KEY, useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
-import { DEFAULT_MQTT_CONFIG, useEnvTelemetry } from "./hooks/useEnvTelemetry";
+import { useEnvTelemetry } from "./hooks/useEnvTelemetry";
+import { useLabStorage } from "./hooks/useLabStorage";
 import type {
   SeatLayout,
   User,
-  MqttConfig,
   SeatState,
   SeatStatus,
-  StaySession,
   UserCategory,
 } from "./types";
 
@@ -75,44 +74,18 @@ const normalizeSeatStates = (raw: unknown) => {
 };
 
 function App() {
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem("lab-users-data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return parsed.map((u: any) => ({
-          ...u,
-          category: u.category || "Other",
-        }));
-      } catch {
-        return DEFAULT_USERS;
-      }
-    }
-    return DEFAULT_USERS;
+  const {
+    users,
+    setUsers,
+    seatStates,
+    setSeatStates,
+    makeExportData,
+    makeImportHandler,
+  } = useLabStorage({
+    defaultUsers: DEFAULT_USERS,
+    createEmptySeatStates,
+    normalizeSeatStates,
   });
-
-  useEffect(() => {
-    localStorage.setItem("lab-users-data", JSON.stringify(users));
-  }, [users]);
-
-  const [seatStates, setSeatStates] = useState<Record<string, SeatState>>(
-    () => {
-      const saved = localStorage.getItem("lab-seat-data");
-      if (saved) {
-        try {
-          return normalizeSeatStates(JSON.parse(saved));
-        } catch {
-          return createEmptySeatStates();
-        }
-      }
-      return createEmptySeatStates();
-    }
-  );
-
-  useEffect(() => {
-    localStorage.setItem("lab-seat-data", JSON.stringify(seatStates));
-  }, [seatStates]);
 
   const { mqttConfig, envTelemetry, handleMqttConfigChange, setMqttConfig } =
     useEnvTelemetry();
@@ -464,91 +437,22 @@ function App() {
 
   const exportData = useMemo(
     () =>
-      JSON.stringify(
-        {
-          version: 2,
-          users,
-          seatStates,
-          sessions,
-          lastResetDate: lastResetDate || null,
-          mqttConfig,
-        },
-        null,
-        2
-      ),
-    [users, seatStates, sessions, lastResetDate, mqttConfig]
+      makeExportData({
+        sessions,
+        lastResetDate,
+        mqttConfig,
+      }),
+    [makeExportData, sessions, lastResetDate, mqttConfig]
   );
 
-  const handleImportData = (raw: string) => {
-    try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") {
-        return { success: false, message: "JSONが無効です" };
-      }
-
-      const validCategories: UserCategory[] = ["Staff", "D", "M", "B", "Other"];
-
-      const importedUsers: User[] = Array.isArray(
-        (parsed as { users?: unknown }).users
-      )
-        ? ((parsed as { users?: unknown }).users as User[])
-            .filter(
-              (u) => u && typeof u.id === "string" && typeof u.name === "string"
-            )
-            .map((u) => ({
-              id: u.id,
-              name: u.name,
-              category: validCategories.includes(u.category || "Other")
-                ? (u.category as UserCategory)
-                : "Other",
-            }))
-        : users;
-
-      const importedSeats = (parsed as { seatStates?: unknown }).seatStates
-        ? normalizeSeatStates((parsed as { seatStates?: unknown }).seatStates)
-        : createEmptySeatStates();
-
-      const importedSessions: StaySession[] = Array.isArray(
-        (parsed as { sessions?: unknown }).sessions
-      )
-        ? ((parsed as { sessions?: unknown }).sessions as StaySession[]).filter(
-            (s) =>
-              s &&
-              typeof s.userId === "string" &&
-              typeof s.seatId === "string" &&
-              typeof s.start === "number" &&
-              (typeof s.end === "number" || s.end === null)
-          )
-        : [];
-
-      const importedLastReset =
-        typeof (parsed as { lastResetDate?: unknown }).lastResetDate ===
-        "string"
-          ? (parsed as { lastResetDate?: string }).lastResetDate
-          : null;
-
-      const importedMqttConfigRaw =
-        (parsed as { mqttConfig?: unknown }).mqttConfig || {};
-      const importedMqttConfig: MqttConfig = {
-        ...DEFAULT_MQTT_CONFIG,
-        ...(typeof importedMqttConfigRaw === "object" && importedMqttConfigRaw
-          ? (importedMqttConfigRaw as Partial<MqttConfig>)
-          : {}),
-      };
-
-      setUsers(importedUsers);
-      setSeatStates(importedSeats);
-      importTrackingData({
-        sessions: importedSessions,
-        lastResetDate: importedLastReset,
-      });
-      setMqttConfig(importedMqttConfig);
-
-      return { success: true, message: "インポートが完了しました" };
-    } catch {
-      return { success: false, message: "JSONの解析に失敗しました" };
-    }
-  };
+  const handleImportData = useMemo(
+    () =>
+      makeImportHandler({
+        importTrackingData,
+        setMqttConfig,
+      }),
+    [makeImportHandler, importTrackingData, setMqttConfig]
+  );
 
   return (
     <div className="h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
