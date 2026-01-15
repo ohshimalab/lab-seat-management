@@ -5,8 +5,10 @@ import type {
   SeatLayout,
   SeatState,
   SeatStatus,
+  StaySession,
   User,
   SeatTimelineSlice,
+  SeatTimelineState,
 } from "../types";
 
 interface SeatGridProps {
@@ -14,7 +16,8 @@ interface SeatGridProps {
   seatStates: Record<string, SeatState>;
   users: User[];
   draggingSeatId: string | null;
-  todaySeatTimeline: Record<string, SeatTimelineSlice[]>;
+  sessions: StaySession[];
+  nowMs: number;
   onSeatClick: (seatId: string) => void;
   onSeatDragStart: (seatId: string) => void;
   onSeatDragOver: (
@@ -43,7 +46,6 @@ const SeatRow: React.FC<SeatRowProps> = ({
   seatCards,
   users,
   draggingSeatId,
-  todaySeatTimeline,
   onSeatClick,
   onSeatDragStart,
   onSeatDragOver,
@@ -69,7 +71,7 @@ const SeatRow: React.FC<SeatRowProps> = ({
             : seatState.userId
             ? users.find((u) => u.id === seatState.userId) || null
             : null;
-          const timeline = card?.timeline || todaySeatTimeline[seatId];
+          const timeline = card?.timeline;
           return (
             <Seat
               key={seatId}
@@ -91,8 +93,68 @@ const SeatRow: React.FC<SeatRowProps> = ({
   );
 };
 
+const TIMELINE_BUCKET_MINUTES = 30;
+
 export const SeatGrid: React.FC<SeatGridProps> = (props) => {
-  const { layout, seatStates, users, todaySeatTimeline } = props;
+  const { layout, seatStates, users, sessions, nowMs } = props;
+
+  const todaySeatTimeline = useMemo(() => {
+    const bucketMs = TIMELINE_BUCKET_MINUTES * 60 * 1000;
+    const startOfDay = new Date(nowMs);
+    startOfDay.setHours(0, 0, 0, 0);
+    const dayStart = startOfDay.getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    const bucketCount = Math.max(1, Math.ceil((dayEnd - dayStart) / bucketMs));
+
+    const base: Record<string, SeatTimelineSlice[]> = {};
+    Object.keys(seatStates).forEach((seatId) => {
+      base[seatId] = Array.from({ length: bucketCount }, (_, idx) => {
+        const start = dayStart + idx * bucketMs;
+        return {
+          start,
+          end: Math.min(start + bucketMs, dayEnd),
+          state: "empty" as SeatTimelineState,
+        };
+      });
+    });
+
+    sessions.forEach((session) => {
+      const slices = base[session.seatId];
+      if (!slices) return;
+      const effectiveStart = Math.max(session.start, dayStart);
+      const rawEnd = session.end ?? nowMs;
+      const effectiveEnd = Math.min(rawEnd, dayEnd);
+      if (effectiveEnd <= dayStart || effectiveEnd <= effectiveStart) return;
+
+      const startIdx = Math.max(
+        0,
+        Math.floor((effectiveStart - dayStart) / bucketMs)
+      );
+      const endIdx = Math.min(
+        slices.length,
+        Math.ceil((effectiveEnd - dayStart) / bucketMs)
+      );
+
+      for (let idx = startIdx; idx < endIdx; idx += 1) {
+        const slice = slices[idx];
+        if (slice) slice.state = "present";
+      }
+    });
+
+    Object.entries(seatStates).forEach(([seatId, seat]) => {
+      if (!seat?.userId || seat.status !== "away") return;
+      const slices = base[seatId];
+      if (!slices || slices.length === 0) return;
+      const currentIdx = Math.min(
+        slices.length - 1,
+        Math.floor((nowMs - dayStart) / bucketMs)
+      );
+      const target = slices[currentIdx];
+      if (target) target.state = "away";
+    });
+
+    return base;
+  }, [seatStates, sessions, nowMs]);
 
   const seatCards = useMemo(() => {
     const cards: Record<

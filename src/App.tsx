@@ -59,7 +59,7 @@ function App() {
     handleThisWeek,
     lastResetDate,
     importTrackingData,
-    todaySeatTimeline,
+    nowMs,
   } = useStayTracking({
     users,
     seatStates,
@@ -178,7 +178,8 @@ function App() {
         seatStates={seatStates}
         users={users}
         draggingSeatId={draggingSeatId}
-        todaySeatTimeline={todaySeatTimeline}
+        sessions={sessions}
+        nowMs={nowMs}
         onSeatClick={handleSeatClick}
         onSeatDragStart={handleSeatDragStart}
         onSeatDragOver={handleSeatDragOver}

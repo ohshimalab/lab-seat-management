@@ -118,7 +118,9 @@ describe("useAdminActions", () => {
       snapshot.actions?.handleRemoveUser(DEFAULT_USERS[0].id);
     });
 
-    expect(snapshot.users.find((u) => u.id === DEFAULT_USERS[0].id)).toBeUndefined();
+    expect(
+      snapshot.users.find((u) => u.id === DEFAULT_USERS[0].id)
+    ).toBeUndefined();
     expect(snapshot.seatStates[seatId].userId).toBeNull();
   });
 
@@ -166,9 +168,10 @@ describe("useStorageIO", () => {
       } as MqttConfig,
     };
 
-    let snapshot:
-      | { exportData: string; handleImportData: (raw: string) => unknown }
-      | null = null;
+    let snapshot: {
+      exportData: string;
+      handleImportData: (raw: string) => unknown;
+    } | null = null;
 
     const Harness = () => {
       const value = useStorageIO({

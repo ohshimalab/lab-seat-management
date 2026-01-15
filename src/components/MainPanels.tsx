@@ -3,14 +3,15 @@ import { SeatGrid } from "./SeatGrid";
 import { TrainInfo } from "./TrainInfo";
 import { NewsVideo } from "./NewsVideo";
 import { PanelCard } from "./PanelCard";
-import type { SeatLayout, SeatState, SeatTimelineSlice, User } from "../types";
+import type { SeatLayout, SeatState, StaySession, User } from "../types";
 
 interface MainPanelsProps {
   layout: SeatLayout[];
   seatStates: Record<string, SeatState>;
   users: User[];
   draggingSeatId: string | null;
-  todaySeatTimeline: Record<string, SeatTimelineSlice[]>;
+  sessions: StaySession[];
+  nowMs: number;
   onSeatClick: (seatId: string) => void;
   onSeatDragStart: (seatId: string) => void;
   onSeatDragOver: (
@@ -26,7 +27,8 @@ export const MainPanels = ({
   seatStates,
   users,
   draggingSeatId,
-  todaySeatTimeline,
+  sessions,
+  nowMs,
   onSeatClick,
   onSeatDragStart,
   onSeatDragOver,
@@ -42,7 +44,8 @@ export const MainPanels = ({
             seatStates={seatStates}
             users={users}
             draggingSeatId={draggingSeatId}
-            todaySeatTimeline={todaySeatTimeline}
+            sessions={sessions}
+            nowMs={nowMs}
             onSeatClick={onSeatClick}
             onSeatDragStart={onSeatDragStart}
             onSeatDragOver={onSeatDragOver}
