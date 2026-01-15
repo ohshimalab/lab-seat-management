@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import JapaneseHolidays from "japanese-holidays";
 import type { TrainTime } from "../data/timetableTypes";
 import { parseCSV } from "../utils/csvParser";
+import { PanelCard } from "./PanelCard";
 
 import weekdayCsvRaw from "../data/weekday.csv?raw";
 import holidayCsvRaw from "../data/holiday.csv?raw";
@@ -53,7 +54,7 @@ export const TrainInfo: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-gray-800 text-white rounded-xl p-4 md:p-4 shadow-xl h-full flex flex-col">
+    <PanelCard tone="dark" className="flex flex-col">
       <div className="border-b border-gray-600 pb-2 mb-2">
         <div className="flex justify-between items-start">
           <h2 className="text-lg font-bold text-gray-200">🚇 学園都市発</h2>
@@ -130,6 +131,6 @@ export const TrainInfo: React.FC = () => {
       <div className="text-center text-[11px] text-gray-500 mt-2">
         ※到着時刻ではなく発車時刻です
       </div>
-    </div>
+    </PanelCard>
   );
 };

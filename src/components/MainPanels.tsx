@@ -38,7 +38,7 @@ export const MainPanels = ({
   return (
     <div className="flex flex-1 gap-3 md:gap-4 max-w-7xl mx-auto w-full h-full overflow-hidden">
       <div className="flex-1 min-w-0 h-full overflow-hidden">
-        <PanelCard className="overflow-y-auto">
+        <PanelCard scroll="y">
           <SeatGrid
             layout={layout}
             seatStates={seatStates}
@@ -55,12 +55,12 @@ export const MainPanels = ({
         </PanelCard>
       </div>
       <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-        <PanelCard className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0">
           <TrainInfo />
-        </PanelCard>
-        <PanelCard className="flex-1 min-h-0">
+        </div>
+        <div className="flex-1 min-h-0">
           <NewsVideo />
-        </PanelCard>
+        </div>
       </div>
     </div>
   );
