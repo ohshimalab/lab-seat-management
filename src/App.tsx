@@ -1,12 +1,8 @@
 import { useState, useMemo } from "react";
-import { UserSelectModal } from "./components/UserSelectModal";
-import { ActionModal } from "./components/ActionModal";
-import { RandomSeatModal } from "./components/RandomSeatModal";
-import { AdminModal } from "./components/AdminModal";
-import { LeaderboardModal } from "./components/LeaderboardModal";
-import { HomeReminderModal } from "./components/HomeReminderModal";
 import { HeaderBar } from "./components/HeaderBar";
 import { MainPanels } from "./components/MainPanels";
+import { ModalsLayer } from "./components/ModalsLayer";
+import { NotificationsLayer } from "./components/NotificationsLayer";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
@@ -192,6 +188,11 @@ function App() {
     [makeImportHandler, importTrackingData, setMqttConfig]
   );
 
+  const actionSeatId = selectedSeatId || "";
+  const isSelectedSeatAway = selectedSeatId
+    ? seatStates[selectedSeatId]?.status === "away"
+    : false;
+
   return (
     <div className="h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
       <HeaderBar
@@ -214,140 +215,86 @@ function App() {
         onSeatDrop={handleSeatDrop}
         onSeatDragEnd={handleSeatDragEnd}
       />
-      {weeklyGreetingOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
-          <div className="pointer-events-auto mt-14 flex items-center gap-3 rounded-full bg-emerald-600 px-4 py-3 text-white shadow-xl">
-            <span className="text-xl" aria-hidden="true">
-              💪
-            </span>
-            <span className="font-semibold tracking-tight">
-              今週も頑張りましょう！
-            </span>
-            <button
-              type="button"
-              onClick={hideWeeklyGreeting}
-              className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="通知を閉じる"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      {firstArrivalOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
-          <div className="pointer-events-auto mt-6 flex items-center gap-3 rounded-full bg-amber-600 px-4 py-3 text-white shadow-xl">
-            <span className="text-xl" aria-hidden="true">
-              🚀
-            </span>
-            <span className="font-semibold tracking-tight">
-              {firstArrivalName
-                ? `${firstArrivalName}さん、今日の一番乗り！`
-                : "今日の一番乗り！"}
-            </span>
-            <button
-              type="button"
-              onClick={hideFirstArrival}
-              className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="通知を閉じる"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      {weekendFarewellOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
-          <div className="pointer-events-auto mt-28 flex items-center gap-3 rounded-full bg-sky-700 px-4 py-3 text-white shadow-xl">
-            <span className="text-xl" aria-hidden="true">
-              🙌
-            </span>
-            <span className="font-semibold tracking-tight">
-              今週もお疲れ様でした
-            </span>
-            <button
-              type="button"
-              onClick={hideWeekendFarewell}
-              className="text-sm font-bold text-white/80 hover:text-white"
-              aria-label="通知を閉じる"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      <UserSelectModal
-        isOpen={isUserModalOpen}
-        users={availableUsers}
-        stayDurations={stayDurationDisplay}
-        onSelect={handleUserSelect}
-        onClose={closeUserModal}
+      <NotificationsLayer
+        weeklyGreetingOpen={weeklyGreetingOpen}
+        weekendFarewellOpen={weekendFarewellOpen}
+        firstArrivalOpen={firstArrivalOpen}
+        firstArrivalName={firstArrivalName}
+        onHideWeeklyGreeting={hideWeeklyGreeting}
+        onHideWeekendFarewell={hideWeekendFarewell}
+        onHideFirstArrival={hideFirstArrival}
       />
-      <ActionModal
-        isOpen={isActionModalOpen}
-        seatId={selectedSeatId || ""}
-        userName={getSelectedUserName()}
-        isAway={
-          selectedSeatId ? seatStates[selectedSeatId]?.status === "away" : false
-        }
-        onToggleAway={handleToggleAway}
-        onLeave={handleLeaveSeat}
-        onClose={closeActionModal}
-      />
-      <AdminModal
-        isOpen={isAdminModalOpen}
-        users={users}
-        reminderTime={reminderTime}
-        onChangeReminderTime={setReminderTime}
-        onResetReminderDate={resetReminderDate}
-        reminderDuration={reminderDuration}
-        onChangeReminderDuration={setReminderDuration}
-        mqttConfig={mqttConfig}
-        onChangeMqttConfig={handleMqttConfigChange}
-        onAddUser={handleAddUser}
-        onRemoveUser={handleRemoveUser}
-        sessions={sessions}
-        onAddSession={(session) =>
-          addSessionManual(
-            session.userId,
-            session.seatId,
-            session.start,
-            session.end
-          )
-        }
-        onUpdateSession={updateSession}
-        onRemoveSession={removeSession}
-        exportData={exportData}
-        onImportData={handleImportData}
-        onClose={() => setIsAdminModalOpen(false)}
-      />
-      <RandomSeatModal
-        isOpen={isRandomModalOpen}
-        users={availableUsers}
-        selectedUserId={randomUserId}
-        assignedSeatId={randomSeatId}
-        hasAnySeat={hasEmptySeat || Boolean(randomUserId)}
-        stayDurations={stayDurationDisplay}
-        onSelectUser={handleRandomSelect}
-        onClose={closeRandomModal}
-      />
-      <LeaderboardModal
-        isOpen={isLeaderboardOpen}
-        weekLabel={selectedWeekLabel}
-        rows={leaderboardRows}
-        users={users}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-        onThisWeek={handleThisWeek}
-        disableThisWeek={disableThisWeek}
-        disablePrevWeek={disablePrevWeek}
-        disableNextWeek={disableNextWeek}
-        onClose={() => setIsLeaderboardOpen(false)}
-      />
-      <HomeReminderModal
-        isOpen={isHomeReminderOpen}
-        autoCloseMs={reminderDuration * 1000}
-        onClose={closeHomeReminder}
+      <ModalsLayer
+        userSelect={{
+          isOpen: isUserModalOpen,
+          users: availableUsers,
+          stayDurations: stayDurationDisplay,
+          onSelect: handleUserSelect,
+          onClose: closeUserModal,
+        }}
+        action={{
+          isOpen: isActionModalOpen,
+          seatId: actionSeatId,
+          userName: getSelectedUserName(),
+          isAway: isSelectedSeatAway,
+          onToggleAway: handleToggleAway,
+          onLeave: handleLeaveSeat,
+          onClose: closeActionModal,
+        }}
+        admin={{
+          isOpen: isAdminModalOpen,
+          users,
+          reminderTime,
+          onChangeReminderTime: setReminderTime,
+          onResetReminderDate: resetReminderDate,
+          reminderDuration,
+          onChangeReminderDuration: setReminderDuration,
+          mqttConfig,
+          onChangeMqttConfig: handleMqttConfigChange,
+          onAddUser: handleAddUser,
+          onRemoveUser: handleRemoveUser,
+          sessions,
+          onAddSession: (session) =>
+            addSessionManual(
+              session.userId,
+              session.seatId,
+              session.start,
+              session.end
+            ),
+          onUpdateSession: updateSession,
+          onRemoveSession: removeSession,
+          exportData,
+          onImportData: handleImportData,
+          onClose: () => setIsAdminModalOpen(false),
+        }}
+        randomSeat={{
+          isOpen: isRandomModalOpen,
+          users: availableUsers,
+          selectedUserId: randomUserId,
+          assignedSeatId: randomSeatId,
+          hasAnySeat: hasEmptySeat || Boolean(randomUserId),
+          stayDurations: stayDurationDisplay,
+          onSelectUser: handleRandomSelect,
+          onClose: closeRandomModal,
+        }}
+        leaderboard={{
+          isOpen: isLeaderboardOpen,
+          weekLabel: selectedWeekLabel,
+          rows: leaderboardRows,
+          users,
+          onPrevWeek: handlePrevWeek,
+          onNextWeek: handleNextWeek,
+          onThisWeek: handleThisWeek,
+          disableThisWeek,
+          disablePrevWeek,
+          disableNextWeek,
+          onClose: () => setIsLeaderboardOpen(false),
+        }}
+        homeReminder={{
+          isOpen: isHomeReminderOpen,
+          autoCloseMs: reminderDuration * 1000,
+          onClose: closeHomeReminder,
+        }}
       />
     </div>
   );

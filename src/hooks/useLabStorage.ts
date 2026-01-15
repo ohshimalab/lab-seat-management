@@ -146,10 +146,10 @@ export const useLabStorage = ({
               )
             : [];
 
-          const importedLastReset =
+          const importedLastReset: string | null =
             typeof (parsed as { lastResetDate?: unknown }).lastResetDate ===
             "string"
-              ? (parsed as { lastResetDate?: string }).lastResetDate
+              ? (parsed as { lastResetDate: string }).lastResetDate
               : null;
 
           const importedMqttConfigRaw =
