@@ -61,3 +61,50 @@ describe("weekly greeting popup", () => {
     }
   );
 });
+
+describe("weekend farewell popup", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows when leaving on Friday and auto-hides", () => {
+    vi.setSystemTime(new Date("2024-01-12T18:00:00")); // Friday
+    render(<App />);
+
+    fireEvent.click(screen.getByText("R11"));
+    fireEvent.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    fireEvent.click(screen.getByText("R11"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "退席する (磁石を外す)" })
+    );
+
+    expect(screen.getByText("今週もお疲れ様でした")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(screen.queryByText("今週もお疲れ様でした")).toBeNull();
+  });
+
+  it("does not show when leaving on a weekday (Monday)", () => {
+    vi.setSystemTime(new Date("2024-01-08T18:00:00")); // Monday
+    render(<App />);
+
+    fireEvent.click(screen.getByText("R11"));
+    fireEvent.click(screen.getByRole("button", { name: /Yamada/ }));
+
+    fireEvent.click(screen.getByText("R11"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "退席する (磁石を外す)" })
+    );
+
+    expect(screen.queryByText("今週もお疲れ様でした")).toBeNull();
+  });
+});

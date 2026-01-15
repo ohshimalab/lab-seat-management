@@ -185,6 +185,7 @@ function App() {
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
   const [isWeeklyGreetingOpen, setIsWeeklyGreetingOpen] = useState(false);
+  const [isWeekendFarewellOpen, setIsWeekendFarewellOpen] = useState(false);
 
   const seatedUserIds = useMemo(
     () =>
@@ -260,6 +261,12 @@ function App() {
     const id = window.setTimeout(() => setIsWeeklyGreetingOpen(false), 4000);
     return () => window.clearTimeout(id);
   }, [isWeeklyGreetingOpen]);
+
+  useEffect(() => {
+    if (!isWeekendFarewellOpen) return;
+    const id = window.setTimeout(() => setIsWeekendFarewellOpen(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [isWeekendFarewellOpen]);
 
   const isMqttConfigValid = (config: MqttConfig) =>
     Boolean(config.serverUrl && config.clientName);
@@ -385,6 +392,11 @@ function App() {
     }
   };
 
+  const isWeekendDay = (date: Date) => {
+    const day = date.getDay();
+    return day === 5 || day === 6 || day === 0; // Fri, Sat, Sun
+  };
+
   const handleSeatClick = (seatId: string) => {
     const currentUserId = seatStates[seatId]?.userId || null;
     setSelectedSeatId(seatId);
@@ -394,12 +406,14 @@ function App() {
 
   const handleLeaveSeat = () => {
     if (!selectedSeatId) return;
-    const now = Date.now();
+    const nowDate = new Date();
+    const now = nowDate.getTime();
     finalizeSeatOccupant(selectedSeatId, now);
     setSeatStates((prev) => ({
       ...prev,
       [selectedSeatId]: { userId: null, status: "present", startedAt: null },
     }));
+    if (isWeekendDay(nowDate)) setIsWeekendFarewellOpen(true);
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
   };
@@ -807,6 +821,26 @@ function App() {
             <button
               type="button"
               onClick={() => setIsWeeklyGreetingOpen(false)}
+              className="text-sm font-bold text-white/80 hover:text-white"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      {isWeekendFarewellOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-28 flex items-center gap-3 rounded-full bg-sky-700 px-4 py-3 text-white shadow-xl">
+            <span className="text-xl" aria-hidden="true">
+              🙌
+            </span>
+            <span className="font-semibold tracking-tight">
+              今週もお疲れ様でした
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsWeekendFarewellOpen(false)}
               className="text-sm font-bold text-white/80 hover:text-white"
               aria-label="閉じる"
             >
