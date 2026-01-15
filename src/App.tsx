@@ -3,12 +3,10 @@ import { UserSelectModal } from "./components/UserSelectModal";
 import { ActionModal } from "./components/ActionModal";
 import { RandomSeatModal } from "./components/RandomSeatModal";
 import { AdminModal } from "./components/AdminModal";
-import { TrainInfo } from "./components/TrainInfo";
-import { NewsVideo } from "./components/NewsVideo";
 import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
-import { SeatGrid } from "./components/SeatGrid";
-import { EnvInfo } from "./components/EnvInfo";
+import { HeaderBar } from "./components/HeaderBar";
+import { MainPanels } from "./components/MainPanels";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
@@ -196,65 +194,26 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
-      <div className="flex flex-wrap justify-between items-center gap-2 mb-2 px-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-            大島研究室
-          </h1>
-          <EnvInfo envTelemetry={envTelemetry} />
-        </div>
-        <div className="flex gap-2 md:gap-3">
-          <button
-            onClick={() => setIsLeaderboardOpen(true)}
-            className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
-          >
-            🏆 リーダーボード
-          </button>
-          <button
-            onClick={handleOpenRandom}
-            className="bg-indigo-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-indigo-500 shadow-md"
-          >
-            🎲 ランダム着席
-          </button>
-          <button
-            onClick={handleReset}
-            className="text-xs md:text-sm text-gray-400 hover:text-red-500 underline"
-          >
-            全席リセット
-          </button>
-          <button
-            onClick={() => setIsAdminModalOpen(true)}
-            className="bg-gray-800 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-gray-700 shadow-md"
-          >
-            ⚙ 設定
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-1 gap-3 md:gap-4 max-w-7xl mx-auto w-full h-full overflow-hidden">
-        <div className="flex-1 min-w-0 bg-white p-4 md:p-5 rounded-xl shadow-lg h-full overflow-y-auto">
-          <SeatGrid
-            layout={INITIAL_LAYOUT}
-            seatStates={seatStates}
-            seatCards={seatCards}
-            users={users}
-            draggingSeatId={draggingSeatId}
-            todaySeatTimeline={todaySeatTimeline}
-            onSeatClick={handleSeatClick}
-            onSeatDragStart={handleSeatDragStart}
-            onSeatDragOver={handleSeatDragOver}
-            onSeatDrop={handleSeatDrop}
-            onSeatDragEnd={handleSeatDragEnd}
-          />
-        </div>
-        <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-          <div className="flex-1 min-h-0">
-            <TrainInfo />
-          </div>
-          <div className="flex-1 min-h-0">
-            <NewsVideo />
-          </div>
-        </div>
-      </div>
+      <HeaderBar
+        envTelemetry={envTelemetry}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenRandom={handleOpenRandom}
+        onReset={handleReset}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+      />
+      <MainPanels
+        layout={INITIAL_LAYOUT}
+        seatStates={seatStates}
+        seatCards={seatCards}
+        users={users}
+        draggingSeatId={draggingSeatId}
+        todaySeatTimeline={todaySeatTimeline}
+        onSeatClick={handleSeatClick}
+        onSeatDragStart={handleSeatDragStart}
+        onSeatDragOver={handleSeatDragOver}
+        onSeatDrop={handleSeatDrop}
+        onSeatDragEnd={handleSeatDragEnd}
+      />
       {weeklyGreetingOpen && (
         <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
           <div className="pointer-events-auto mt-14 flex items-center gap-3 rounded-full bg-emerald-600 px-4 py-3 text-white shadow-xl">
