@@ -683,11 +683,11 @@ function App() {
           <div className="flex items-start gap-3 text-xs md:text-sm text-gray-700 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100">
             <div className="flex flex-col gap-0.5 leading-tight">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">気温</span>
+                <span className="font-semibold text-gray-900">🌡️</span>
                 <span className="font-mono text-gray-900">{tempDisplay}°C</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">湿度</span>
+                <span className="font-semibold text-gray-900">💧</span>
                 <span className="font-mono text-gray-900">{humDisplay}%</span>
               </div>
             </div>
