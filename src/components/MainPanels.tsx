@@ -2,6 +2,7 @@ import type React from "react";
 import { SeatGrid } from "./SeatGrid";
 import { TrainInfo } from "./TrainInfo";
 import { NewsVideo } from "./NewsVideo";
+import { PanelCard } from "./PanelCard";
 import type { SeatLayout, SeatState, SeatTimelineSlice, User } from "../types";
 
 interface MainPanelsProps {
@@ -34,27 +35,29 @@ export const MainPanels = ({
 }: MainPanelsProps) => {
   return (
     <div className="flex flex-1 gap-3 md:gap-4 max-w-7xl mx-auto w-full h-full overflow-hidden">
-      <div className="flex-1 min-w-0 bg-white p-4 md:p-5 rounded-xl shadow-lg h-full overflow-y-auto">
-        <SeatGrid
-          layout={layout}
-          seatStates={seatStates}
-          users={users}
-          draggingSeatId={draggingSeatId}
-          todaySeatTimeline={todaySeatTimeline}
-          onSeatClick={onSeatClick}
-          onSeatDragStart={onSeatDragStart}
-          onSeatDragOver={onSeatDragOver}
-          onSeatDrop={onSeatDrop}
-          onSeatDragEnd={onSeatDragEnd}
-        />
+      <div className="flex-1 min-w-0 h-full overflow-hidden">
+        <PanelCard className="overflow-y-auto">
+          <SeatGrid
+            layout={layout}
+            seatStates={seatStates}
+            users={users}
+            draggingSeatId={draggingSeatId}
+            todaySeatTimeline={todaySeatTimeline}
+            onSeatClick={onSeatClick}
+            onSeatDragStart={onSeatDragStart}
+            onSeatDragOver={onSeatDragOver}
+            onSeatDrop={onSeatDrop}
+            onSeatDragEnd={onSeatDragEnd}
+          />
+        </PanelCard>
       </div>
       <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-        <div className="flex-1 min-h-0">
+        <PanelCard className="flex-1 min-h-0">
           <TrainInfo />
-        </div>
-        <div className="flex-1 min-h-0">
+        </PanelCard>
+        <PanelCard className="flex-1 min-h-0">
           <NewsVideo />
-        </div>
+        </PanelCard>
       </div>
     </div>
   );
