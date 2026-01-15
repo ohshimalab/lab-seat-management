@@ -12,14 +12,15 @@ import { LeaderboardModal } from "./components/LeaderboardModal";
 import { HomeReminderModal } from "./components/HomeReminderModal";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { FIRST_ARRIVAL_KEY, useNotifications } from "./hooks/useNotifications";
+import { useHomeReminder } from "./hooks/useHomeReminder";
 import type {
-  User,
   SeatLayout,
-  UserCategory,
+  User,
+  MqttConfig,
   SeatState,
   SeatStatus,
   StaySession,
-  MqttConfig,
+  UserCategory,
 } from "./types";
 
 // --- 初期レイアウト ---
@@ -170,18 +171,6 @@ function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [isHomeReminderOpen, setIsHomeReminderOpen] = useState(false);
-  const [reminderTime, setReminderTime] = useState(() => {
-    const saved = localStorage.getItem("lab-home-reminder-time");
-    return typeof saved === "string" && /^\d{2}:\d{2}$/.test(saved)
-      ? saved
-      : "20:00";
-  });
-  const [reminderDuration, setReminderDuration] = useState(() => {
-    const saved = localStorage.getItem("lab-home-reminder-duration");
-    const parsed = saved ? parseInt(saved, 10) : NaN;
-    return Number.isNaN(parsed) || parsed <= 0 ? 15 : parsed;
-  });
   const [randomUserId, setRandomUserId] = useState<string | null>(null);
   const [randomSeatId, setRandomSeatId] = useState<string | null>(null);
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
@@ -215,45 +204,6 @@ function App() {
         minute: "2-digit",
       })
     : null;
-
-  useEffect(() => {
-    const STORAGE_KEY = "lab-home-reminder-date";
-    const BUFFER_MINUTES = 5;
-    const parseMinutes = (timeStr: string) => {
-      const [h, m] = timeStr.split(":").map((v) => parseInt(v, 10));
-      if (Number.isNaN(h) || Number.isNaN(m)) return 20 * 60;
-      return h * 60 + m;
-    };
-
-    const checkReminder = () => {
-      if (!hasSeatedUser) return;
-      const now = new Date();
-      const dateKey = now.toISOString().slice(0, 10);
-      const targetMinutes = parseMinutes(reminderTime);
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      const last = localStorage.getItem(STORAGE_KEY);
-      const diff = nowMinutes - targetMinutes;
-      if (diff >= 0 && diff <= BUFFER_MINUTES && last !== dateKey) {
-        setIsHomeReminderOpen(true);
-        localStorage.setItem(STORAGE_KEY, dateKey);
-      }
-    };
-
-    checkReminder();
-    const id = setInterval(checkReminder, 60 * 1000);
-    return () => clearInterval(id);
-  }, [reminderTime, hasSeatedUser]);
-
-  useEffect(() => {
-    localStorage.setItem("lab-home-reminder-time", reminderTime);
-  }, [reminderTime]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lab-home-reminder-duration",
-      String(reminderDuration)
-    );
-  }, [reminderDuration]);
 
   const isMqttConfigValid = (config: MqttConfig) =>
     Boolean(config.serverUrl && config.clientName);
@@ -342,10 +292,6 @@ function App() {
     };
   }, [mqttConfig]);
 
-  const resetReminderDate = () => {
-    localStorage.removeItem("lab-home-reminder-date");
-  };
-
   const {
     selectedWeekLabel,
     leaderboardRows,
@@ -385,6 +331,16 @@ function App() {
     showFirstArrival,
     hideFirstArrival,
   } = useNotifications();
+
+  const {
+    isHomeReminderOpen,
+    reminderTime,
+    reminderDuration,
+    setReminderTime,
+    setReminderDuration,
+    resetReminderDate,
+    closeHomeReminder,
+  } = useHomeReminder({ hasSeatedUser });
 
   const maybeShowWeeklyGreeting = (userId: string) => {
     if (!hasUserSessionThisWeek(userId)) {
@@ -955,7 +911,7 @@ function App() {
       <HomeReminderModal
         isOpen={isHomeReminderOpen}
         autoCloseMs={reminderDuration * 1000}
-        onClose={() => setIsHomeReminderOpen(false)}
+        onClose={closeHomeReminder}
       />
     </div>
   );
