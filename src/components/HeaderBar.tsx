@@ -6,6 +6,7 @@ interface HeaderBarProps {
   onOpenLeaderboard: () => void;
   onOpenRandom: () => void;
   onReset: () => void;
+  onReload: () => void;
   onOpenAdmin: () => void;
 }
 
@@ -14,6 +15,7 @@ export const HeaderBar = ({
   onOpenLeaderboard,
   onOpenRandom,
   onReset,
+  onReload,
   onOpenAdmin,
 }: HeaderBarProps) => {
   return (
@@ -25,6 +27,14 @@ export const HeaderBar = ({
         <EnvInfo envTelemetry={envTelemetry} />
       </div>
       <div className="flex gap-2 md:gap-3">
+        <button
+          onClick={onReload}
+          title="Reload App"
+          aria-label="Reload app"
+          className="text-xs md:text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-lg border bg-white shadow-sm"
+        >
+          ⟳
+        </button>
         <button
           onClick={onOpenLeaderboard}
           className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"

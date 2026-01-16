@@ -165,12 +165,13 @@ function App() {
     : false;
 
   return (
-    <div className="h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
+    <div className="relative h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
       <HeaderBar
         envTelemetry={envTelemetry}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenRandom={handleOpenRandom}
         onReset={handleReset}
+        onReload={() => window.location.reload()}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
       />
       <MainPanels
