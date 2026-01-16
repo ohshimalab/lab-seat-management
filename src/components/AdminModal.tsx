@@ -4,6 +4,7 @@ import ImportExportPanel from "./ImportExportPanel";
 import MembersPanel from "./MembersPanel";
 import MQTTConfigForm from "./MQTTConfigForm";
 import RemindersPanel from "./RemindersPanel";
+import ModalShell from "./ModalShell";
 import SessionsEditor from "./SessionsEditor";
 
 interface Props {
@@ -65,50 +66,40 @@ export const AdminModal: React.FC<Props> = ({
   // import/export handled by ImportExportPanel
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
-      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-3xl shadow-2xl m-2 md:m-4 flex flex-col max-h-[85vh]">
-        <div className="flex justify-between items-center mb-4 border-b pb-3">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800">設定</h2>
-          <button
-            onClick={onClose}
-            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-300 active:scale-95 transition-transform"
-          >
-            閉じる
-          </button>
-        </div>
-        <RemindersPanel
-          reminderTime={reminderTime}
-          onChangeReminderTime={onChangeReminderTime}
-          onResetReminderDate={onResetReminderDate}
-          reminderDuration={reminderDuration}
-          onChangeReminderDuration={onChangeReminderDuration}
-        />
-        <MQTTConfigForm
-          mqttConfig={mqttConfig}
-          onChangeMqttConfig={onChangeMqttConfig}
-        />
-        <MembersPanel
+    <ModalShell isOpen={isOpen} title="設定" onClose={onClose}>
+      <RemindersPanel
+        reminderTime={reminderTime}
+        onChangeReminderTime={onChangeReminderTime}
+        onResetReminderDate={onResetReminderDate}
+        reminderDuration={reminderDuration}
+        onChangeReminderDuration={onChangeReminderDuration}
+      />
+      <MQTTConfigForm
+        mqttConfig={mqttConfig}
+        onChangeMqttConfig={onChangeMqttConfig}
+      />
+      <MembersPanel
+        users={users}
+        onAddUser={onAddUser}
+        onRemoveUser={onRemoveUser}
+      />
+
+      <div className="overflow-y-auto flex-1 pr-2">
+        <SessionsEditor
           users={users}
-          onAddUser={onAddUser}
-          onRemoveUser={onRemoveUser}
+          sessions={sessions}
+          onAddSession={onAddSession}
+          onUpdateSession={onUpdateSession}
+          onRemoveSession={onRemoveSession}
         />
-        <div className="overflow-y-auto flex-1 pr-2">
-          {/* Members table moved to MembersPanel */}
 
-          <SessionsEditor
-            users={users}
-            sessions={sessions}
-            onAddSession={onAddSession}
-            onUpdateSession={onUpdateSession}
-            onRemoveSession={onRemoveSession}
-          />
-
-          <ImportExportPanel
-            exportData={exportData}
-            onImportData={onImportData}
-          />
-        </div>
+        <ImportExportPanel
+          exportData={exportData}
+          onImportData={onImportData}
+        />
       </div>
-    </div>
+    </ModalShell>
   );
 };
+
+export default AdminModal;
