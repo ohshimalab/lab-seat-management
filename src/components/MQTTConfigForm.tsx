@@ -16,7 +16,9 @@ export const MQTTConfigForm: React.FC<Props> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-3 mb-4 bg-blue-50 border border-blue-100 p-3 rounded-lg">
-      <div className="text-sm font-semibold text-gray-700">環境センサー (MQTT)</div>
+      <div className="text-sm font-semibold text-gray-700">
+        環境センサー (MQTT)
+      </div>
       <input
         type="text"
         value={mqttConfig.serverUrl}
