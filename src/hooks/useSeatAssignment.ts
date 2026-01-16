@@ -15,6 +15,7 @@ interface Params {
   showWeeklyGreeting: () => void;
   showWeekendFarewell: () => void;
   showFirstArrival: (name: string) => void;
+  showFirstWeeklyCombined: (name: string) => void;
 }
 
 const isWeekendDay = (date: Date) => {
@@ -32,6 +33,7 @@ export const useSeatAssignment = ({
   showWeeklyGreeting,
   showWeekendFarewell,
   showFirstArrival,
+  showFirstWeeklyCombined,
 }: Params) => {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -55,13 +57,22 @@ export const useSeatAssignment = ({
     if (!hasUserSessionThisWeek(userId)) showWeeklyGreeting();
   };
 
-  const maybeShowFirstArrivalGreeting = (userId: string, nowDate: Date) => {
+  const maybeShowCombinedOrSeparate = (userId: string, nowDate: Date) => {
     const todayKey = nowDate.toISOString().slice(0, 10);
     const recorded = localStorage.getItem(FIRST_ARRIVAL_KEY);
-    if (recorded === todayKey) return;
+    const firstArrivalWouldShow = recorded !== todayKey;
+    const weeklyWouldShow = !hasUserSessionThisWeek(userId);
     const name = users.find((u) => u.id === userId)?.name || "";
-    showFirstArrival(name);
-    localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
+    if (firstArrivalWouldShow && weeklyWouldShow) {
+      showFirstWeeklyCombined(name);
+      localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
+      return;
+    }
+    if (firstArrivalWouldShow) {
+      showFirstArrival(name);
+      localStorage.setItem(FIRST_ARRIVAL_KEY, todayKey);
+    }
+    if (weeklyWouldShow) showWeeklyGreeting();
   };
 
   const handleSeatClick = (seatId: string) => {
@@ -97,8 +108,7 @@ export const useSeatAssignment = ({
         startedAt: now,
       },
     }));
-    maybeShowFirstArrivalGreeting(user.id, nowDate);
-    maybeShowWeeklyGreeting(user.id);
+    maybeShowCombinedOrSeparate(user.id, nowDate);
     startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
@@ -135,8 +145,7 @@ export const useSeatAssignment = ({
       return next;
     });
     if (chosenSeat) {
-      maybeShowFirstArrivalGreeting(user.id, nowDate);
-      maybeShowWeeklyGreeting(user.id);
+      maybeShowCombinedOrSeparate(user.id, nowDate);
       startSession(user.id, chosenSeat, now);
     }
     setRandomUserId(user.id);

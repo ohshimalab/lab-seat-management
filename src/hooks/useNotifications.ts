@@ -8,6 +8,8 @@ export const useNotifications = () => {
   const [weekendFarewellOpen, setWeekendFarewellOpen] = useState(false);
   const [firstArrivalOpen, setFirstArrivalOpen] = useState(false);
   const [firstArrivalName, setFirstArrivalName] = useState("");
+  const [combinedOpen, setCombinedOpen] = useState(false);
+  const [combinedName, setCombinedName] = useState("");
 
   useEffect(() => {
     if (!weeklyGreetingOpen) return;
@@ -36,6 +38,12 @@ export const useNotifications = () => {
     return () => window.clearTimeout(id);
   }, [firstArrivalOpen]);
 
+  useEffect(() => {
+    if (!combinedOpen) return;
+    const id = window.setTimeout(() => setCombinedOpen(false), AUTO_CLOSE_MS);
+    return () => window.clearTimeout(id);
+  }, [combinedOpen]);
+
   const showWeeklyGreeting = useCallback(() => setWeeklyGreetingOpen(true), []);
   const hideWeeklyGreeting = useCallback(
     () => setWeeklyGreetingOpen(false),
@@ -57,16 +65,26 @@ export const useNotifications = () => {
   }, []);
   const hideFirstArrival = useCallback(() => setFirstArrivalOpen(false), []);
 
+  const showFirstWeeklyCombined = useCallback((name: string) => {
+    setCombinedName(name);
+    setCombinedOpen(true);
+  }, []);
+  const hideFirstWeeklyCombined = useCallback(() => setCombinedOpen(false), []);
+
   return {
     weeklyGreetingOpen,
     weekendFarewellOpen,
     firstArrivalOpen,
     firstArrivalName,
+    combinedOpen,
+    combinedName,
     showWeeklyGreeting,
     hideWeeklyGreeting,
     showWeekendFarewell,
     hideWeekendFarewell,
     showFirstArrival,
     hideFirstArrival,
+    showFirstWeeklyCombined,
+    hideFirstWeeklyCombined,
   };
 };

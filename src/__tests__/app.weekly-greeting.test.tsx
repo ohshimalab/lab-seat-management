@@ -31,13 +31,13 @@ describe("weekly greeting popup", () => {
 
       await seatYamada();
 
-      expect(screen.getByText("今週も頑張りましょう！")).toBeInTheDocument();
+      expect(screen.getByText(/今週も頑張りましょう！/)).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(4000);
       });
 
-      expect(screen.queryByText("今週も頑張りましょう！")).toBeNull();
+      expect(screen.queryByText(/今週も頑張りましょう！/)).toBeNull();
     }
   );
 
@@ -62,9 +62,26 @@ describe("weekly greeting popup", () => {
 
       await seatYamada();
 
-      expect(screen.queryByText("今週も頑張りましょう！")).toBeNull();
+      expect(screen.queryByText(/今週も頑張りましょう！/)).toBeNull();
     }
   );
+
+  it("shows combined first-arrival + weekly toast when both conditions coincide", async () => {
+    render(<App />);
+
+    await seatYamada();
+
+    const firstNode = screen.getByText(/一番乗り/);
+    const container = firstNode.closest("div");
+    expect(container).toHaveTextContent(/今週も頑張りましょう！/);
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(screen.queryByText(/一番乗り/)).toBeNull();
+    expect(screen.queryByText(/今週も頑張りましょう！/)).toBeNull();
+  });
 });
 
 describe("first arrival popup", () => {

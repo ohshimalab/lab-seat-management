@@ -85,6 +85,10 @@ function App() {
     hideWeekendFarewell,
     showFirstArrival,
     hideFirstArrival,
+    combinedOpen,
+    combinedName,
+    showFirstWeeklyCombined,
+    hideFirstWeeklyCombined,
   } = useNotifications();
 
   const {
@@ -125,6 +129,7 @@ function App() {
     showWeeklyGreeting,
     showWeekendFarewell,
     showFirstArrival,
+    showFirstWeeklyCombined,
   });
 
   const { handleAddUser, handleRemoveUser, handleReset } = useAdminActions({
@@ -192,9 +197,12 @@ function App() {
         weekendFarewellOpen={weekendFarewellOpen}
         firstArrivalOpen={firstArrivalOpen}
         firstArrivalName={firstArrivalName}
+        combinedOpen={combinedOpen}
+        combinedName={combinedName}
         onHideWeeklyGreeting={hideWeeklyGreeting}
         onHideWeekendFarewell={hideWeekendFarewell}
         onHideFirstArrival={hideFirstArrival}
+        onHideCombined={hideFirstWeeklyCombined}
       />
       <ModalsLayer
         userSelect={{
