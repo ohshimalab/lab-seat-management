@@ -53,9 +53,9 @@ export const useSeatAssignment = ({
     );
   };
 
-  const maybeShowWeeklyGreeting = (userId: string) => {
-    if (!hasUserSessionThisWeek(userId)) showWeeklyGreeting();
-  };
+  // const maybeShowWeeklyGreeting = (userId: string) => {
+  //   if (!hasUserSessionThisWeek(userId)) showWeeklyGreeting();
+  // };
 
   const maybeShowCombinedOrSeparate = (userId: string, nowDate: Date) => {
     const todayKey = nowDate.toISOString().slice(0, 10);
