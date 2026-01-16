@@ -51,7 +51,7 @@ export const ModalShell: React.FC<Props> = ({
             </button>
           </div>
 
-          {children}
+          <div className="flex-1 overflow-y-auto min-h-0">{children}</div>
         </div>
       </FocusLock>
     </div>
