@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import type { MqttConfig, StaySession, User, UserCategory } from "../types";
 import ImportExportPanel from "./ImportExportPanel";
 import MembersPanel from "./MembersPanel";
+import MQTTConfigForm from "./MQTTConfigForm";
 
 interface Props {
   isOpen: boolean;
@@ -57,7 +58,6 @@ export const AdminModal: React.FC<Props> = ({
   onImportData,
   onClose,
 }) => {
-  
   const [sessionUserId, setSessionUserId] = useState<string>("");
   const [sessionSeatId, setSessionSeatId] = useState<string>("");
   const [sessionStart, setSessionStart] = useState<string>("");
@@ -68,12 +68,7 @@ export const AdminModal: React.FC<Props> = ({
   const [editStart, setEditStart] = useState<string>("");
   const [editEnd, setEditEnd] = useState<string>("");
 
-  const handleMqttChange = (
-    field: keyof MqttConfig,
-    value: string | number
-  ) => {
-    onChangeMqttConfig({ ...mqttConfig, [field]: String(value) });
-  };
+  
 
   const sortedSessions = useMemo(() => {
     return [...sessions]
@@ -90,8 +85,6 @@ export const AdminModal: React.FC<Props> = ({
   }, [users]);
 
   if (!isOpen) return null;
-
-  
 
   const toInputValue = (value: number) => {
     const date = new Date(value);
@@ -199,36 +192,10 @@ export const AdminModal: React.FC<Props> = ({
             今日のリマインダーをリセット
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-3 mb-4 bg-blue-50 border border-blue-100 p-3 rounded-lg">
-          <div className="text-sm font-semibold text-gray-700">
-            環境センサー (MQTT)
-          </div>
-          <input
-            type="text"
-            value={mqttConfig.serverUrl}
-            onChange={(e) => handleMqttChange("serverUrl", e.target.value)}
-            placeholder="wss://broker.example.com"
-            className="border-2 border-blue-200 rounded-lg px-3 py-1.5 text-sm md:text-base bg-white focus:border-blue-500 w-full md:w-56"
-          />
-          <input
-            type="text"
-            value={mqttConfig.clientName}
-            onChange={(e) => handleMqttChange("clientName", e.target.value)}
-            placeholder="クライアント名 / ユーザー名"
-            className="border-2 border-blue-200 rounded-lg px-3 py-1.5 text-sm md:text-base bg-white focus:border-blue-500 w-full md:w-48"
-          />
-          <input
-            type="password"
-            value={mqttConfig.clientPassword}
-            onChange={(e) => handleMqttChange("clientPassword", e.target.value)}
-            placeholder="パスワード (任意)"
-            className="border-2 border-blue-200 rounded-lg px-3 py-1.5 text-sm md:text-base bg-white focus:border-blue-500 w-full md:w-48"
-          />
-          <span className="text-xs text-gray-600">
-            WebSocket ブローカーに接続し、ohshimalab/+/+/telemetry
-            を購読します。
-          </span>
-        </div>
+        <MQTTConfigForm
+          mqttConfig={mqttConfig}
+          onChangeMqttConfig={onChangeMqttConfig}
+        />
         <MembersPanel
           users={users}
           onAddUser={onAddUser}

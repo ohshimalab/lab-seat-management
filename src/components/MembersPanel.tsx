@@ -62,7 +62,10 @@ export const MembersPanel: React.FC<Props> = ({
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id} className="border-b last:border-0 hover:bg-gray-50">
+            <tr
+              key={user.id}
+              className="border-b last:border-0 hover:bg-gray-50"
+            >
               <td className="p-3">
                 <span
                   className={`px-2 py-1 rounded text-sm font-bold ${
@@ -71,7 +74,9 @@ export const MembersPanel: React.FC<Props> = ({
                       : ""
                   } ${user.category === "D" ? "bg-red-100 text-red-700" : ""} ${
                     user.category === "M" ? "bg-blue-100 text-blue-700" : ""
-                  } ${user.category === "B" ? "bg-green-100 text-green-700" : ""} ${
+                  } ${
+                    user.category === "B" ? "bg-green-100 text-green-700" : ""
+                  } ${
                     !user.category || user.category === "Other"
                       ? "bg-gray-100 text-gray-700"
                       : ""
@@ -80,11 +85,17 @@ export const MembersPanel: React.FC<Props> = ({
                   {user.category || "Other"}
                 </span>
               </td>
-              <td className="p-3 text-lg font-bold text-gray-700">{user.name}</td>
+              <td className="p-3 text-lg font-bold text-gray-700">
+                {user.name}
+              </td>
               <td className="p-3 text-right">
                 <button
                   onClick={() => {
-                    if (confirm(`「${user.name}」さんを削除してもよろしいですか？`))
+                    if (
+                      confirm(
+                        `「${user.name}」さんを削除してもよろしいですか？`
+                      )
+                    )
                       onRemoveUser(user.id);
                   }}
                   className="text-red-500 font-bold hover:underline px-2 py-1"
