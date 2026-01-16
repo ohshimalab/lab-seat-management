@@ -20,7 +20,7 @@ export const ModalShell: React.FC<Props> = ({
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose && onClose();
+      if (e.key === "Escape") onClose?.();
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
