@@ -8,6 +8,7 @@ interface HeaderBarProps {
   onReset: () => void;
   onReload: () => void;
   onOpenAdmin: () => void;
+  onOpenHeatmap?: () => void;
 }
 
 export const HeaderBar = ({
@@ -17,6 +18,8 @@ export const HeaderBar = ({
   onReset,
   onReload,
   onOpenAdmin,
+
+  onOpenHeatmap,
 }: HeaderBarProps) => {
   return (
     <div className="flex flex-wrap justify-between items-center gap-2 mb-2 px-2">
@@ -40,6 +43,12 @@ export const HeaderBar = ({
           className="bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-amber-400 shadow-md"
         >
           🏆 リーダーボード
+        </button>
+        <button
+          onClick={onOpenHeatmap}
+          className="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold hover:bg-red-500 shadow-md"
+        >
+          🔥 ヒートマップ
         </button>
         <button
           onClick={onOpenRandom}

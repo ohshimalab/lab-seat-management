@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { HeaderBar } from "./components/HeaderBar";
+import SeatHeatmapModal from "./components/Analytics/SeatHeatmapModal";
 import { MainPanels } from "./components/MainPanels";
 import { ModalsLayer } from "./components/ModalsLayer";
 import { NotificationsLayer } from "./components/NotificationsLayer";
@@ -39,6 +40,7 @@ function App() {
 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
 
   const {
     selectedWeekLabel,
@@ -178,7 +180,9 @@ function App() {
         onReset={handleReset}
         onReload={() => window.location.reload()}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenHeatmap={() => setIsHeatmapOpen(true)}
       />
+
       <MainPanels
         layout={INITIAL_LAYOUT}
         seatStates={seatStates}
@@ -192,6 +196,7 @@ function App() {
         onSeatDrop={handleSeatDrop}
         onSeatDragEnd={handleSeatDragEnd}
       />
+
       <NotificationsLayer
         weeklyGreetingOpen={weeklyGreetingOpen}
         weekendFarewellOpen={weekendFarewellOpen}
@@ -204,6 +209,7 @@ function App() {
         onHideFirstArrival={hideFirstArrival}
         onHideCombined={hideFirstWeeklyCombined}
       />
+
       <ModalsLayer
         userSelect={{
           isOpen: isUserModalOpen,
@@ -275,6 +281,16 @@ function App() {
           autoCloseMs: reminderDuration * 1000,
           onClose: closeHomeReminder,
         }}
+      />
+
+      <SeatHeatmapModal
+        isOpen={isHeatmapOpen}
+        onClose={() => setIsHeatmapOpen(false)}
+        layout={INITIAL_LAYOUT}
+        sessions={sessions}
+        nowMs={nowMs}
+        rangeStartMs={nowMs - 1000 * 60 * 60 * 24}
+        rangeEndMs={nowMs}
       />
     </div>
   );
