@@ -436,8 +436,6 @@ export function useStayTracking({
 
   const startSession = (userId: string, seatId: string, startedAt: number) => {
     const today = formatDateKey(new Date(startedAt));
-    // eslint-disable-next-line no-console
-    console.log("startSession called", userId, today);
 
     setStrikes((prev) => {
       const existing = prev[userId] || {
@@ -472,8 +470,6 @@ export function useStayTracking({
           userId,
           date: today,
         };
-        // eslint-disable-next-line no-console
-        console.log("Enqueue strike note:", note.text, note);
         setPendingNotifications((p) => [...p, note]);
         updated.lastCongratulatedDate = today;
       }
