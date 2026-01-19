@@ -10,6 +10,19 @@ const getMinuteNow = () => Math.floor(Date.now() / 60000) * 60000;
 import type React from "react";
 import type { SeatState, StaySession, User } from "../types";
 
+type StrikeRecord = {
+  lastActiveDate: string | null;
+  streakCount: number;
+  lastCongratulatedDate: string | null;
+};
+
+type Notification = {
+  id: string;
+  text: string;
+  userId?: string;
+  date: string;
+};
+
 const formatDateKey = (date: Date) => {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -243,6 +256,24 @@ export function useStayTracking({
 
   const [weekKey, setWeekKey] = useState<string>(initialWeekKey);
   const [sessions, setSessions] = useState<StaySession[]>(initialSessions);
+  const [strikes, setStrikes] = useState<Record<string, StrikeRecord>>(() => {
+    try {
+      const raw = localStorage.getItem("lab-strike-data");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, StrikeRecord>;
+      return parsed || {};
+    } catch {
+      return {};
+    }
+  });
+  const [pendingNotifications, setPendingNotifications] = useState<
+    Notification[]
+  >([]);
+  const strikesRef = useRef<Record<string, StrikeRecord>>(strikes);
+
+  useEffect(() => {
+    strikesRef.current = strikes;
+  }, [strikes]);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(() => {
     return computeSelectedWeekFromSessions(initialSessions, nowMs);
   });
@@ -253,6 +284,14 @@ export function useStayTracking({
   useEffect(() => {
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
   }, [sessions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("lab-strike-data", JSON.stringify(strikes));
+    } catch {
+      // ignore
+    }
+  }, [strikes]);
 
   useEffect(() => {
     if (lastResetDate) {
@@ -396,6 +435,52 @@ export function useStayTracking({
   };
 
   const startSession = (userId: string, seatId: string, startedAt: number) => {
+    const today = formatDateKey(new Date(startedAt));
+    // eslint-disable-next-line no-console
+    console.log("startSession called", userId, today);
+
+    setStrikes((prev) => {
+      const existing = prev[userId] || {
+        lastActiveDate: null,
+        streakCount: 0,
+        lastCongratulatedDate: null,
+      };
+
+      if (existing.lastActiveDate === today) return prev;
+
+      const yesterdayDate = new Date(startedAt);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = formatDateKey(yesterdayDate);
+      const sameWeek =
+        getWeekStartKey(new Date(existing.lastActiveDate || "1970-01-01")) ===
+        getWeekStartKey(new Date(startedAt));
+      const nextStreak =
+        existing.lastActiveDate === yesterday && sameWeek
+          ? existing.streakCount + 1
+          : 1;
+
+      const updated: StrikeRecord = {
+        lastActiveDate: today,
+        streakCount: nextStreak,
+        lastCongratulatedDate: existing.lastCongratulatedDate,
+      };
+
+      if (nextStreak >= 2 && existing.lastCongratulatedDate !== today) {
+        const note: Notification = {
+          id: `note-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          text: `${nextStreak}ストライクです！`,
+          userId,
+          date: today,
+        };
+        // eslint-disable-next-line no-console
+        console.log("Enqueue strike note:", note.text, note);
+        setPendingNotifications((p) => [...p, note]);
+        updated.lastCongratulatedDate = today;
+      }
+
+      return { ...prev, [userId]: updated };
+    });
+
     setSessions((prev) => [
       ...prev,
       { id: newSessionId(), userId, seatId, start: startedAt, end: null },
@@ -567,6 +652,7 @@ export function useStayTracking({
     importTrackingData: (payload: {
       sessions?: StaySession[];
       lastResetDate?: string | null;
+      strikes?: Record<string, StrikeRecord>;
     }) => {
       const nextSessions = Array.isArray(payload.sessions)
         ? payload.sessions
@@ -581,6 +667,11 @@ export function useStayTracking({
       if (payload.lastResetDate !== undefined) {
         setLastResetDate(payload.lastResetDate);
       }
+      if (payload.strikes) {
+        setStrikes(payload.strikes);
+      }
     },
+    pendingNotifications,
+    consumeNotifications: () => setPendingNotifications([]),
   };
 }
