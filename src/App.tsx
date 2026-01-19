@@ -4,7 +4,6 @@ import SeatHeatmapModal from "./components/Analytics/SeatHeatmapModal";
 import { MainPanels } from "./components/MainPanels";
 import { ModalsLayer } from "./components/ModalsLayer";
 import { NotificationsLayer } from "./components/NotificationsLayer";
-import NotificationModal from "./components/NotificationModal";
 import { useStayTracking } from "./hooks/useStayTracking";
 import { useNotifications } from "./hooks/useNotifications";
 import { useHomeReminder } from "./hooks/useHomeReminder";
@@ -63,17 +62,12 @@ function App() {
     lastResetDate,
     importTrackingData,
     nowMs,
-    pendingNotifications,
-    consumeNotifications,
   } = useStayTracking({
     users,
     seatStates,
     setSeatStates,
     createEmptySeatStates,
   });
-
-  // pending notifications from stay tracking (e.g. strikes)
-  const pendingNotes = (pendingNotifications || []) as { text: string }[];
 
   const { seatedUserIds, availableUsers, hasEmptySeat } = useSeatAvailability({
     seatStates,
@@ -98,24 +92,6 @@ function App() {
     showFirstWeeklyCombined,
     hideFirstWeeklyCombined,
   } = useNotifications();
-
-  const anyNotificationOpen =
-    pendingNotes.length > 0 ||
-    weeklyGreetingOpen ||
-    weekendFarewellOpen ||
-    firstArrivalOpen ||
-    combinedOpen;
-
-  const aggregatedMessages: string[] = pendingNotes.map((n) => n.text);
-
-  const handleCloseNotifications = () => {
-    // consume stay tracking notifications
-    consumeNotifications?.();
-    hideWeeklyGreeting();
-    hideWeekendFarewell();
-    hideFirstArrival();
-    hideFirstWeeklyCombined();
-  };
 
   const {
     isHomeReminderOpen,
@@ -232,12 +208,6 @@ function App() {
         onHideWeekendFarewell={hideWeekendFarewell}
         onHideFirstArrival={hideFirstArrival}
         onHideCombined={hideFirstWeeklyCombined}
-      />
-
-      <NotificationModal
-        isOpen={anyNotificationOpen}
-        messages={aggregatedMessages}
-        onClose={handleCloseNotifications}
       />
 
       <ModalsLayer

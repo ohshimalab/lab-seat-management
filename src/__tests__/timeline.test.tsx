@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-  cleanup,
-} from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 
@@ -14,12 +8,7 @@ const countState = (state: string, slices: HTMLElement[]) =>
 describe("seat presence timeline", () => {
   beforeEach(() => {
     localStorage.clear();
-    // prevent the app's reset-window logic from clearing seats during tests
     vi.useRealTimers();
-    localStorage.setItem(
-      "lab-last-reset-date",
-      new Date().toISOString().slice(0, 10)
-    );
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -65,23 +54,9 @@ describe("seat presence timeline", () => {
       expect(countState("away", initialSlices)).toBe(0);
 
       fireEvent.click(screen.getByText("R11"));
-      // Instead of interacting with the modal (which can be flaky in CI/fake-timer setups),
-      // re-render the app with the seat marked away in storage and verify the timeline.
-      cleanup();
-      // mark seat R11 as away at the same startedAt
-      const stored = JSON.parse(localStorage.getItem("lab-seat-data") || "{}");
-      const newStored = {
-        ...stored,
-        R11: {
-          userId: "u1",
-          status: "away",
-          startedAt: JSON.parse(
-            localStorage.getItem("lab-stay-sessions") || "[]"
-          )[0].start,
-        },
-      };
-      localStorage.setItem("lab-seat-data", JSON.stringify(newStored));
-      render(<App />);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "離席中にする" })
+      );
 
       const slicesAfterAway = within(
         screen.getByTestId("timeline-R11")
