@@ -13,7 +13,7 @@ export const TrainInfo: React.FC = () => {
   const [nextTrains, setNextTrains] = useState<TrainTime[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scheduleType, setScheduleType] = useState<"Weekday" | "Holiday">(
-    "Weekday"
+    "Weekday",
   );
 
   const weekdayTimetable = parseCSV(weekdayCsvRaw);
@@ -67,15 +67,12 @@ export const TrainInfo: React.FC = () => {
           >
             {scheduleType === "Holiday" ? "土休日ダイヤ" : "平日ダイヤ"}
           </span>
-        </div>
-        <span className="text-xs font-normal block text-gray-400 mt-1">
-          三宮・新神戸・谷上方面
-        </span>
-        <div className="mt-1 text-right">
           <span className="bg-blue-600 text-[10px] px-2 py-0.5 rounded">
             徒歩 {WALK_MINUTES}分 考慮済
           </span>
         </div>
+
+        <div className="mt-1 text-right"></div>
       </div>
       <div className="text-center mb-2">
         <div className="text-xs text-gray-400">現在時刻</div>
