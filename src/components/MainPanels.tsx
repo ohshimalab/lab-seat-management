@@ -1,6 +1,7 @@
 import type React from "react";
 import { SeatGrid } from "./SeatGrid";
 import { TrainInfo } from "./TrainInfo";
+import CleaningDuty from "./CleaningDuty.tsx";
 import { NewsVideo } from "./NewsVideo";
 import { PanelCard } from "./PanelCard";
 import type { SeatLayout, SeatState, StaySession, User } from "../types";
@@ -16,7 +17,7 @@ interface MainPanelsProps {
   onSeatDragStart: (seatId: string) => void;
   onSeatDragOver: (
     seatId: string,
-    event: React.DragEvent<HTMLDivElement>
+    event: React.DragEvent<HTMLDivElement>,
   ) => void;
   onSeatDrop: (seatId: string) => void;
   onSeatDragEnd: () => void;
@@ -55,10 +56,13 @@ export const MainPanels = ({
         </PanelCard>
       </div>
       <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0" style={{ flex: 2 }}>
           <TrainInfo />
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0" style={{ flex: 1.5 }}>
+          <CleaningDuty />
+        </div>
+        <div className="min-h-0" style={{ flex: 2 }}>
           <NewsVideo />
         </div>
       </div>
