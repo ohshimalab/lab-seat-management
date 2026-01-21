@@ -56,7 +56,9 @@ function App() {
     setEnvTempThresholds(t);
     try {
       localStorage.setItem("lab-env-temp-thresholds", JSON.stringify(t));
-    } catch {}
+    } catch {
+      // ignore
+    }
   };
 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
