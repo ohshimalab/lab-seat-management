@@ -38,6 +38,27 @@ function App() {
   const { mqttConfig, envTelemetry, handleMqttConfigChange, setMqttConfig } =
     useEnvTelemetry();
 
+  // Environment thresholds (high/low) for temperature highlighting
+  const [envTempThresholds, setEnvTempThresholds] = useState(() => {
+    try {
+      const raw = localStorage.getItem("lab-env-temp-thresholds");
+      if (!raw) return { high: 26.0, low: 20.0 };
+      const parsed = JSON.parse(raw);
+      return {
+        high: typeof parsed.high === "number" ? parsed.high : 26.0,
+        low: typeof parsed.low === "number" ? parsed.low : 20.0,
+      };
+    } catch {
+      return { high: 26.0, low: 20.0 };
+    }
+  });
+  const handleChangeEnvTempThresholds = (t: { high: number; low: number }) => {
+    setEnvTempThresholds(t);
+    try {
+      localStorage.setItem("lab-env-temp-thresholds", JSON.stringify(t));
+    } catch {}
+  };
+
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
@@ -175,6 +196,7 @@ function App() {
     <div className="relative h-screen bg-gray-50 p-2 md:p-3 select-none flex flex-col overflow-hidden">
       <HeaderBar
         envTelemetry={envTelemetry}
+        tempThresholds={envTempThresholds}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenRandom={handleOpenRandom}
         onReset={handleReset}
@@ -237,6 +259,8 @@ function App() {
           onChangeReminderDuration: setReminderDuration,
           mqttConfig,
           onChangeMqttConfig: handleMqttConfigChange,
+          envTempThresholds: envTempThresholds,
+          onChangeEnvTempThresholds: handleChangeEnvTempThresholds,
           onAddUser: handleAddUser,
           onRemoveUser: handleRemoveUser,
           sessions,
@@ -245,7 +269,7 @@ function App() {
               session.userId,
               session.seatId,
               session.start,
-              session.end
+              session.end,
             ),
           onUpdateSession: updateSession,
           onRemoveSession: removeSession,

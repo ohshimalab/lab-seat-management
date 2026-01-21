@@ -41,6 +41,8 @@ interface ModalsLayerProps {
     onChangeReminderDuration: (value: number) => void;
     mqttConfig: MqttConfig;
     onChangeMqttConfig: (config: MqttConfig) => void;
+    envTempThresholds?: { high: number; low: number };
+    onChangeEnvTempThresholds?: (t: { high: number; low: number }) => void;
     onAddUser: (name: string, category: UserCategory) => void;
     onRemoveUser: (userId: string) => void;
     sessions: StaySession[];
@@ -57,7 +59,7 @@ interface ModalsLayerProps {
         seatId: string;
         start: number;
         end: number | null;
-      }
+      },
     ) => void;
     onRemoveSession: (sessionId: string) => void;
     exportData: string;
@@ -130,6 +132,8 @@ export const ModalsLayer = ({
         onChangeReminderDuration={admin.onChangeReminderDuration}
         mqttConfig={admin.mqttConfig}
         onChangeMqttConfig={admin.onChangeMqttConfig}
+        envTempThresholds={admin.envTempThresholds}
+        onChangeEnvTempThresholds={admin.onChangeEnvTempThresholds}
         onAddUser={admin.onAddUser}
         onRemoveUser={admin.onRemoveUser}
         sessions={admin.sessions}

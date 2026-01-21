@@ -195,6 +195,8 @@ interface Props {
   onChangeReminderDuration: (value: number) => void;
   mqttConfig: MqttConfig;
   onChangeMqttConfig: (config: MqttConfig) => void;
+  envTempThresholds?: { high: number; low: number };
+  onChangeEnvTempThresholds?: (t: { high: number; low: number }) => void;
   sessions: StaySession[];
   onAddSession: (session: {
     userId: string;
@@ -229,6 +231,8 @@ export const AdminModal: React.FC<Props> = ({
   onChangeReminderDuration,
   mqttConfig,
   onChangeMqttConfig,
+  envTempThresholds,
+  onChangeEnvTempThresholds,
   sessions,
   onAddSession,
   onUpdateSession,
@@ -241,16 +245,21 @@ export const AdminModal: React.FC<Props> = ({
     | "all"
     | "reminders"
     | "mqtt"
+    | "env"
     | "members"
     | "sessions"
     | "data"
     | "cleaning";
   const [selectedTab, setSelectedTab] = useState<TabKey>("all");
 
+  // Inputs are controlled directly by `envTempThresholds` via props.
+  // Avoid keeping duplicate local state to prevent cascading renders.
+
   const tabs: { key: TabKey; label: string }[] = [
     { key: "all", label: "全て" },
     { key: "reminders", label: "リマインダー" },
     { key: "mqtt", label: "MQTT" },
+    { key: "env", label: "環境" },
     { key: "cleaning", label: "掃除当番" },
     { key: "members", label: "メンバー" },
     { key: "sessions", label: "履歴" },
@@ -335,6 +344,71 @@ export const AdminModal: React.FC<Props> = ({
               mqttConfig={mqttConfig}
               onChangeMqttConfig={onChangeMqttConfig}
             />
+          )}
+
+          {selectedTab === "env" && (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-100 p-3 rounded-lg">
+                <div className="text-sm font-semibold text-gray-700 mb-2">
+                  環境閾値 (温度)
+                </div>
+                <p className="text-xs text-gray-600 mb-2">
+                  温度が高い/低いときに温度表示をハイライトします。閾値は小数で設定できます。
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-sm">高温閾値 (°C)</label>
+                  <input
+                    className="border rounded px-3 py-1"
+                    type="number"
+                    step="0.1"
+                    value={envTempThresholds?.high ?? 26.0}
+                    onChange={(e) => {
+                      const high = parseFloat(e.target.value) || 26.0;
+                      const low = envTempThresholds?.low ?? 20.0;
+                      onChangeEnvTempThresholds?.({ high, low });
+                    }}
+                    id="env-high-input"
+                  />
+
+                  <label className="text-sm">低温閾値 (°C)</label>
+                  <input
+                    className="border rounded px-3 py-1"
+                    type="number"
+                    step="0.1"
+                    value={envTempThresholds?.low ?? 20.0}
+                    onChange={(e) => {
+                      const low = parseFloat(e.target.value) || 20.0;
+                      const high = envTempThresholds?.high ?? 26.0;
+                      onChangeEnvTempThresholds?.({ high, low });
+                    }}
+                    id="env-low-input"
+                  />
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="bg-blue-600 text-white px-3 py-1 rounded"
+                    onClick={() => {
+                      const high = envTempThresholds?.high ?? 26.0;
+                      const low = envTempThresholds?.low ?? 20.0;
+                      onChangeEnvTempThresholds?.({ high, low });
+                    }}
+                  >
+                    保存
+                  </button>
+                  <button
+                    className="bg-gray-100 px-3 py-1 rounded"
+                    onClick={() => {
+                      const high = 26.0;
+                      const low = 20.0;
+                      onChangeEnvTempThresholds?.({ high, low });
+                    }}
+                  >
+                    リセット
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {selectedTab === "cleaning" && (

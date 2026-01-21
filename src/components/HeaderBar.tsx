@@ -3,6 +3,7 @@ import { EnvInfo } from "./EnvInfo";
 
 interface HeaderBarProps {
   envTelemetry: EnvTelemetryState;
+  tempThresholds?: { high: number; low: number };
   onOpenLeaderboard: () => void;
   onOpenRandom: () => void;
   onReset: () => void;
@@ -20,6 +21,7 @@ export const HeaderBar = ({
   onOpenAdmin,
 
   onOpenHeatmap,
+  tempThresholds,
 }: HeaderBarProps) => {
   return (
     <div className="flex flex-wrap justify-between items-center gap-2 mb-2 px-2">
@@ -27,7 +29,7 @@ export const HeaderBar = ({
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">
           大島研究室
         </h1>
-        <EnvInfo envTelemetry={envTelemetry} />
+        <EnvInfo envTelemetry={envTelemetry} tempThresholds={tempThresholds} />
       </div>
       <div className="flex gap-2 md:gap-3">
         <button
