@@ -57,8 +57,7 @@ const SeatRow: React.FC<SeatRowProps> = ({
       <h2 className="text-xl font-semibold text-gray-500 mb-2 pl-2">
         {row.rowId} 列
       </h2>
-      <div className={`flex flex-wrap gap-2 ${
-          row.rowId === "R1" ? "justify-end" : ""}`}>
+      <div className="flex flex-wrap gap-2 justify-end">
         {row.seats.map((seatId) => {
           const card = seatCards?.[seatId];
           const seatState = card?.seatState ||
