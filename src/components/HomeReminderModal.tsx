@@ -7,7 +7,7 @@ interface HomeReminderModalProps {
 }
 
 const VIDEO_URL =
-  "https://www.youtube.com/embed/_fTITMPnKyc?start=90&autoplay=1";
+  "https://youtu.be/B6ZS1AoryfQ?si=o-2TmzdB4BUZd5AM";
 
 export const HomeReminderModal: React.FC<HomeReminderModalProps> = ({
   isOpen,
@@ -33,7 +33,7 @@ export const HomeReminderModal: React.FC<HomeReminderModalProps> = ({
               そろそろ帰宅時間です
             </div>
             <div className="text-sm text-gray-600">
-              音が流れます（{autoCloseMs / 1000}秒で自動的に閉じます）
+              音が流れます（{autoCloseMs / 80}秒で自動的に閉じます）
             </div>
           </div>
           <button
