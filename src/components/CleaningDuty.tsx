@@ -80,47 +80,48 @@ const CleaningDuty: React.FC = () => {
   }, [accessToken, spreadsheetId]);
 
   return (
-    <PanelCard tone="dark" className="flex flex-col">
-      <div className="border-b border-gray-600 pb-1 mb-2">
-        <div className="flex justify-between items-start">
-          <h3 className="text-lg font-bold text-gray-200">🧹 掃除当番</h3>
-        </div>
+    <PanelCard tone="dark" padding="sm" className="flex flex-col">
+      <div className="border-b border-gray-700 pb-1 mb-1.5 flex justify-between items-center">
+        <h3 className="text-base md:text-lg font-bold text-gray-200">
+          🧹 掃除当番
+        </h3>
+        {!spreadsheetId || !clientId ? (
+          <span className="text-[10px] text-gray-400">
+            設定 → 掃除当番 で設定
+          </span>
+        ) : !accessToken ? (
+          <span className="text-[10px] text-amber-400">
+            要サインイン
+          </span>
+        ) : error ? (
+          <span className="text-[10px] text-red-400">エラー: {error}</span>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div
-          className={`flex items-center justify-between p-3 rounded-lg ${thisWeek ? "bg-green-600 shadow-lg border border-green-400" : "bg-gray-700"}`}
+          className={`flex items-center justify-between px-3 py-1.5 md:py-2 rounded-lg ${
+            thisWeek
+              ? "bg-green-600 shadow-md border border-green-400"
+              : "bg-gray-700"
+          }`}
         >
           <div className="flex flex-col text-left">
-            <span className="text-[16px] font-bold text-white">今週</span>
-            <span className="text-xl font-mono font-bold text-white mt-1">
+            <span className="text-[11px] md:text-xs font-bold text-gray-200">今週</span>
+            <span className="text-base md:text-lg font-mono font-bold text-white">
               {thisWeek ? `${thisWeek}さん` : "—"}
             </span>
           </div>
         </div>
 
-        <div
-          className={`flex items-center justify-between p-3 rounded-lg ${nextWeek ? "bg-gray-700" : "bg-gray-700"}`}
-        >
+        <div className="flex items-center justify-between px-3 py-1.5 md:py-2 rounded-lg bg-gray-700">
           <div className="flex flex-col text-left">
-            <span className="text-[16px] font-bold text-gray-200">来週</span>
-            <span className="text-xl font-mono font-bold text-gray-100 mt-1">
+            <span className="text-[11px] md:text-xs font-bold text-gray-300">来週</span>
+            <span className="text-base md:text-lg font-mono font-bold text-gray-100">
               {nextWeek ? `${nextWeek}さん` : "—"}
             </span>
           </div>
         </div>
-      </div>
-
-      <div className="text-center text-[11px] text-gray-500 mt-2">
-        {!spreadsheetId || !clientId ? (
-          <span>管理 → 設定 → 掃除当番 で設定してください</span>
-        ) : !accessToken ? (
-          <span>管理画面でサインインしてください</span>
-        ) : error ? (
-          <span className="text-red-400">エラー: {error}</span>
-        ) : (
-          ""
-        )}
       </div>
     </PanelCard>
   );

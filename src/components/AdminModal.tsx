@@ -6,179 +6,227 @@ import MQTTConfigForm from "./MQTTConfigForm";
 import RemindersPanel from "./RemindersPanel";
 import ModalShell from "./ModalShell";
 import SessionsEditor from "./SessionsEditor";
+import { useCleaningDuty } from "../hooks/useCleaningDuty";
 
-const LS_SPREADSHEET = "cleaningDuty.spreadsheetId";
-const LS_CLIENT_ID = "cleaningDuty.clientId";
-const LS_TOKEN = "cleaningDuty.accessToken";
-
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        oauth2?: {
-          initTokenClient: (opts: {
-            client_id: string;
-            scope: string;
-            callback: (resp: { error?: string; access_token?: string }) => void;
-          }) => { requestAccessToken: (opts?: { prompt?: string }) => void };
-        };
-      };
-    };
-  }
+interface CleaningSettingsProps {
+  users?: User[];
 }
 
-const CleaningSettings: React.FC = () => {
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
-    localStorage.getItem(LS_SPREADSHEET),
-  );
-  const [clientId, setClientId] = useState<string | null>(
-    localStorage.getItem(LS_CLIENT_ID),
-  );
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem(LS_TOKEN),
-  );
-  const tokenClientRef = useRef<{
-    requestAccessToken: (opts?: { prompt?: string }) => void;
-  } | null>(null);
+const CleaningSettings: React.FC<CleaningSettingsProps> = ({ users = [] }) => {
+  const {
+    thisWeek,
+    nextWeek,
+    members,
+    currentIndex,
+    addMember,
+    removeMember,
+    moveMember,
+    setCurrentIndex,
+    nextDuty,
+    prevDuty,
+  } = useCleaningDuty();
 
-  useEffect(() => {
-    const onStorage = () => setToken(localStorage.getItem(LS_TOKEN));
-    window.addEventListener("cleaningDutyTokenChanged", onStorage);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("cleaningDutyTokenChanged", onStorage);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  const [newMemberName, setNewMemberName] = useState("");
 
-  const save = () => {
-    if (spreadsheetId) localStorage.setItem(LS_SPREADSHEET, spreadsheetId);
-    else localStorage.removeItem(LS_SPREADSHEET);
-    if (clientId) localStorage.setItem(LS_CLIENT_ID, clientId);
-    else localStorage.removeItem(LS_CLIENT_ID);
-    setSpreadsheetId(localStorage.getItem(LS_SPREADSHEET));
-    setClientId(localStorage.getItem(LS_CLIENT_ID));
-  };
-
-  const clearAll = () => {
-    localStorage.removeItem(LS_SPREADSHEET);
-    localStorage.removeItem(LS_CLIENT_ID);
-    localStorage.removeItem(LS_TOKEN);
-    setSpreadsheetId(null);
-    setClientId(null);
-    setToken(null);
-    window.dispatchEvent(new Event("cleaningDutyTokenChanged"));
-  };
-
-  async function loadGsi() {
-    if (window.google) return;
-    await new Promise<void>((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://accounts.google.com/gsi/client";
-      s.async = true;
-      s.defer = true;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("GSI load failed"));
-      document.head.appendChild(s);
-    });
-  }
-
-  const signIn = async () => {
-    if (!clientId) return alert("OAuth Client ID を先に保存してください。");
-    await loadGsi();
-    const google = window.google;
-    if (!google?.accounts?.oauth2) return alert("google oauth2 not available");
-    if (!tokenClientRef.current) {
-      tokenClientRef.current = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
-        callback: (resp: { error?: string; access_token?: string }) => {
-          if (resp.error) {
-            alert(resp.error);
-            return;
-          }
-          localStorage.setItem(LS_TOKEN, resp.access_token || "");
-          setToken(resp.access_token || null);
-          window.dispatchEvent(new Event("cleaningDutyTokenChanged"));
-        },
-      });
-    }
-    try {
-      tokenClientRef.current.requestAccessToken({ prompt: "consent" });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(msg);
+  const handleAdd = () => {
+    if (newMemberName.trim()) {
+      addMember(newMemberName.trim());
+      setNewMemberName("");
     }
   };
 
-  const signOut = async () => {
-    const t = localStorage.getItem(LS_TOKEN);
-    if (!t) return;
-    try {
-      await fetch(`https://oauth2.googleapis.com/revoke?token=${t}`, {
-        method: "POST",
-        headers: { "Content-type": "application/x-www-form-urlencoded" },
-      });
-    } catch {
-      // ignore
-    }
-    localStorage.removeItem(LS_TOKEN);
-    setToken(null);
-    window.dispatchEvent(new Event("cleaningDutyTokenChanged"));
-  };
+  const unusedLabUsers = users.filter((u) => !members.includes(u.name));
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className="text-sm">Spreadsheet ID</label>
-      <input
-        className="border rounded px-3 py-1"
-        value={spreadsheetId ?? ""}
-        onChange={(e) => setSpreadsheetId(e.target.value)}
-        placeholder="スプレッドシートID"
-      />
-
-      <label className="text-sm">OAuth Client ID</label>
-      <input
-        className="border rounded px-3 py-1"
-        value={clientId ?? ""}
-        onChange={(e) => setClientId(e.target.value)}
-        placeholder="OAuth Client ID (Web application)"
-      />
-
-      <div className="flex gap-2">
-        <button
-          className="bg-blue-600 text-white px-3 py-1 rounded"
-          onClick={save}
-        >
-          保存
-        </button>
-        <button className="bg-gray-100 px-3 py-1 rounded" onClick={clearAll}>
-          クリア
-        </button>
+    <div className="flex flex-col gap-4">
+      {/* Current & Next Duty Card */}
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl p-4 shadow-md">
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <div className="text-xs font-semibold text-emerald-100 uppercase tracking-wider mb-1">
+              🧹 今週の掃除当番
+            </div>
+            <div className="text-2xl font-bold tracking-tight">
+              {thisWeek ? `${thisWeek} さん` : "（未設定）"}
+            </div>
+            {nextWeek && (
+              <div className="text-xs text-emerald-100 mt-1">
+                ⏩ 来週の予定: <span className="font-semibold text-white">{nextWeek} さん</span>
+              </div>
+            )}
+          </div>
+          {members.length > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={prevDuty}
+                className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
+                title="前の当番に戻す"
+              >
+                ◀ 前の人
+              </button>
+              <button
+                type="button"
+                onClick={nextDuty}
+                className="bg-white text-emerald-800 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-md"
+                title="次の当番に進める"
+              >
+                次の人 ▶
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex gap-2 items-center">
-        <button
-          className="bg-green-600 text-white px-3 py-1 rounded"
-          onClick={signIn}
-        >
-          サインイン
-        </button>
-        <button
-          className="bg-red-500 text-white px-3 py-1 rounded"
-          onClick={signOut}
-        >
-          サインアウト
-        </button>
-        <span className="text-sm text-gray-600">
-          {token ? "サインイン済み" : "未サインイン"}
-        </span>
+      {/* Rotation List */}
+      <div>
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-sm font-bold text-gray-700">
+            当番ローテーション順序（{members.length}名）
+          </label>
+          <span className="text-[11px] text-gray-500">
+            ※ 毎週月曜日に自動で次へ進みます
+          </span>
+        </div>
+
+        {members.length === 0 ? (
+          <div className="text-center py-6 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-500 text-xs">
+            掃除当番メンバーがまだ登録されていません。<br />
+            下のボタンまたは入力欄からメンバーを追加してください。
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto pr-1">
+            {members.map((member, index) => {
+              const isCurrent = index === currentIndex;
+              const isNext =
+                members.length > 1 &&
+                index === (currentIndex + 1) % members.length;
+
+              return (
+                <div
+                  key={`${member}-${index}`}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border transition ${
+                    isCurrent
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-bold shadow-sm"
+                      : "bg-white border-gray-200 text-gray-800 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        isCurrent
+                          ? "bg-emerald-600 text-white"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-medium">{member}</span>
+                    {isCurrent && (
+                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
+                        ⭐ 今週
+                      </span>
+                    )}
+                    {isNext && (
+                      <span className="text-[10px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-semibold">
+                        ⏩ 来週
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {!isCurrent && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentIndex(index)}
+                        className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold px-2 py-1 rounded hover:bg-emerald-100/60"
+                        title="この人を今週の当番にする"
+                      >
+                        今週にする
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={() => moveMember(index, index - 1)}
+                      className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-1 text-xs"
+                      title="上へ"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === members.length - 1}
+                      onClick={() => moveMember(index, index + 1)}
+                      className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-1 text-xs"
+                      title="下へ"
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeMember(index)}
+                      className="text-gray-400 hover:text-red-600 p-1 text-xs"
+                      title="削除"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <p className="text-xs text-gray-600">
-        ※ ドメインをGoogle CloudでAuthorized JavaScript
-        originsに追加してください。
-      </p>
+      {/* Add Members Section */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 flex flex-col gap-2.5">
+        <label className="text-xs font-bold text-gray-700">
+          メンバーの追加
+        </label>
+
+        {unusedLabUsers.length > 0 && (
+          <div>
+            <div className="text-[11px] text-gray-500 mb-1.5">
+              研究室メンバーから追加（クリックで追加）:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {unusedLabUsers.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => addMember(user.name)}
+                  className="bg-white border border-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded-md hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700 transition font-medium"
+                >
+                  + {user.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <input
+            className="border rounded-lg px-3 py-1.5 text-xs flex-1 bg-white"
+            value={newMemberName}
+            onChange={(e) => setNewMemberName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder="メンバー名を入力（例: 山田）"
+          />
+          <button
+            type="button"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+            onClick={handleAdd}
+          >
+            追加
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -322,6 +370,13 @@ export const AdminModal: React.FC<Props> = ({
                 onRemoveUser={onRemoveUser}
               />
 
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
+                <div className="text-sm font-bold text-gray-800 mb-3">
+                  掃除当番ローテーション
+                </div>
+                <CleaningSettings users={users} />
+              </div>
+
               <div className="overflow-y-auto flex-1 pr-2">
                 <SessionsEditor
                   users={users}
@@ -413,17 +468,7 @@ export const AdminModal: React.FC<Props> = ({
 
           {selectedTab === "cleaning" && (
             <div className="space-y-4">
-              <div className="bg-green-50 border border-green-100 p-3 rounded-lg">
-                <div className="text-sm font-semibold text-gray-700 mb-2">
-                  掃除当番 (Google Sheets)
-                </div>
-                <p className="text-xs text-gray-600 mb-2">
-                  ブラウザ経由でSheets APIを使うためのOAuth Client
-                  IDとSpreadsheet IDを設定します。
-                  詳細は右パネルの「掃除当番」カードで署名・取得してください。
-                </p>
-                <CleaningSettings />
-              </div>
+              <CleaningSettings users={users} />
             </div>
           )}
 

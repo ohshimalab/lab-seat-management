@@ -1,3 +1,5 @@
+import React from "react";
+
 interface NotificationsLayerProps {
   weeklyGreetingOpen: boolean;
   weekendFarewellOpen: boolean;
@@ -5,24 +7,44 @@ interface NotificationsLayerProps {
   firstArrivalName: string | null;
   combinedOpen?: boolean;
   combinedName?: string | null;
+  cleaningDutyArrivalOpen?: boolean;
+  cleaningDutyArrivalName?: string | null;
+  cleaningDutyDepartureOpen?: boolean;
+  cleaningDutyDepartureName?: string | null;
+  cleaningDutyFinishedToastOpen?: boolean;
+  cleaningDutyFinishedName?: string | null;
   onHideWeeklyGreeting: () => void;
   onHideWeekendFarewell: () => void;
   onHideFirstArrival: () => void;
   onHideCombined?: () => void;
+  onHideCleaningDutyArrival?: () => void;
+  onHideCleaningDutyDeparture?: () => void;
+  onHideCleaningDutyFinishedToast?: () => void;
+  onCompleteCleaningDuty?: () => void;
 }
 
-export const NotificationsLayer = ({
+export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
   weeklyGreetingOpen,
   weekendFarewellOpen,
   firstArrivalOpen,
   firstArrivalName,
   combinedOpen,
   combinedName,
+  cleaningDutyArrivalOpen,
+  cleaningDutyArrivalName,
+  cleaningDutyDepartureOpen,
+  cleaningDutyDepartureName,
+  cleaningDutyFinishedToastOpen,
+  cleaningDutyFinishedName,
   onHideWeeklyGreeting,
   onHideWeekendFarewell,
   onHideFirstArrival,
   onHideCombined,
-}: NotificationsLayerProps) => {
+  onHideCleaningDutyArrival,
+  onHideCleaningDutyDeparture,
+  onHideCleaningDutyFinishedToast,
+  onCompleteCleaningDuty,
+}) => {
   return (
     <>
       {combinedOpen && (
@@ -103,6 +125,100 @@ export const NotificationsLayer = ({
               onClick={onHideWeekendFarewell}
               className="text-sm font-bold text-white/80 hover:text-white"
               aria-label="通知を閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cleaning Duty Arrival Toast */}
+      {cleaningDutyArrivalOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-20 flex items-center gap-3 rounded-full bg-teal-600 px-5 py-3 text-white shadow-2xl border border-teal-400/40 animate-bounce-once">
+            <span className="text-2xl" aria-hidden="true">
+              🧹
+            </span>
+            <span className="font-semibold tracking-tight">
+              {cleaningDutyArrivalName
+                ? `${cleaningDutyArrivalName}さん、今週の掃除当番です！よろしくお願いします。`
+                : "今週の掃除当番です！よろしくお願いします。"}
+            </span>
+            <button
+              type="button"
+              onClick={onHideCleaningDutyArrival}
+              className="text-sm font-bold text-white/80 hover:text-white ml-1"
+              aria-label="当番通知を閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cleaning Duty Departure Prompt (今週の掃除当番は終わりましたか？) */}
+      {cleaningDutyDepartureOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-20 flex flex-col sm:flex-row items-center gap-3 rounded-2xl bg-teal-800 px-6 py-4 text-white shadow-2xl border border-teal-500/60 animate-bounce-once">
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl" aria-hidden="true">
+                🧹
+              </span>
+              <span className="font-bold text-sm sm:text-base tracking-tight">
+                {cleaningDutyDepartureName
+                  ? `${cleaningDutyDepartureName}さん、`
+                  : ""}
+                今週の掃除当番は終わりましたか？
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-2 sm:mt-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onCompleteCleaningDuty?.();
+                  onHideCleaningDutyDeparture?.();
+                }}
+                className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-lg shadow-md transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                title="掃除完了として登録（今週はこれ以降通知されません）"
+              >
+                <span>✓</span> 終わった
+              </button>
+              <button
+                type="button"
+                onClick={onHideCleaningDutyDeparture}
+                className="bg-teal-900/90 hover:bg-teal-900 text-teal-100 hover:text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg border border-teal-600 transition active:scale-95 cursor-pointer"
+              >
+                終わってない
+              </button>
+              <button
+                type="button"
+                onClick={onHideCleaningDutyDeparture}
+                className="text-sm text-white/60 hover:text-white ml-1 p-1"
+                aria-label="当番確認を閉じる"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cleaning Duty Finished Confirmation Toast */}
+      {cleaningDutyFinishedToastOpen && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-20 flex items-center gap-3 rounded-full bg-emerald-700 px-5 py-3 text-white shadow-2xl border border-emerald-400/50">
+            <span className="text-xl" aria-hidden="true">
+              ✨
+            </span>
+            <span className="font-semibold text-sm tracking-tight">
+              {cleaningDutyFinishedName ? `${cleaningDutyFinishedName}さん、` : ""}
+              お疲れ様でした！今週の掃除当番を完了にしました（今週は通知を停止します）。
+            </span>
+            <button
+              type="button"
+              onClick={onHideCleaningDutyFinishedToast}
+              className="text-sm font-bold text-white/80 hover:text-white"
+              aria-label="完了通知を閉じる"
             >
               ✕
             </button>

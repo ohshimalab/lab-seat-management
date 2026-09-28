@@ -1,8 +1,7 @@
 import type React from "react";
 import { SeatGrid } from "./SeatGrid";
 import { TrainInfo } from "./TrainInfo";
-import CleaningDuty from "./CleaningDuty.tsx";
-import { NewsVideo } from "./NewsVideo";
+import { TodayInfo } from "./TodayInfo";
 import { PanelCard } from "./PanelCard";
 import type { SeatLayout, SeatState, StaySession, User } from "../types";
 
@@ -56,14 +55,11 @@ export const MainPanels = ({
         </PanelCard>
       </div>
       <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-        <div className="min-h-0" style={{ flex: 2 }}>
+        <div className="min-h-0" style={{ flex: 1 }}>
           <TrainInfo />
         </div>
-        <div className="min-h-0" style={{ flex: 1.5 }}>
-          <CleaningDuty />
-        </div>
-        <div className="min-h-0" style={{ flex: 2 }}>
-          <NewsVideo />
+        <div className="min-h-0" style={{ flex: 1 }}>
+          <TodayInfo />
         </div>
       </div>
     </div>

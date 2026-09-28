@@ -16,6 +16,9 @@ interface Params {
   showWeekendFarewell: () => void;
   showFirstArrival: (name: string) => void;
   showFirstWeeklyCombined: (name: string) => void;
+  isCleaningDutyPending?: (userName: string) => boolean;
+  showCleaningDutyArrival?: (name: string) => void;
+  showCleaningDutyDeparture?: (name: string) => void;
 }
 
 const isWeekendDay = (date: Date) => {
@@ -34,6 +37,9 @@ export const useSeatAssignment = ({
   showWeekendFarewell,
   showFirstArrival,
   showFirstWeeklyCombined,
+  isCleaningDutyPending,
+  showCleaningDutyArrival,
+  showCleaningDutyDeparture,
 }: Params) => {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -52,10 +58,6 @@ export const useSeatAssignment = ({
       finalizeSeatOccupant(seatId, now)
     );
   };
-
-  // const maybeShowWeeklyGreeting = (userId: string) => {
-  //   if (!hasUserSessionThisWeek(userId)) showWeeklyGreeting();
-  // };
 
   const maybeShowCombinedOrSeparate = (userId: string, nowDate: Date) => {
     const todayKey = nowDate.toISOString().slice(0, 10);
@@ -84,6 +86,9 @@ export const useSeatAssignment = ({
 
   const handleLeaveSeat = () => {
     if (!selectedSeatId) return;
+    const leavingUserId = seatStates[selectedSeatId]?.userId;
+    const leavingUser = users.find((u) => u.id === leavingUserId);
+
     const nowDate = new Date();
     const now = nowDate.getTime();
     finalizeSeatOccupant(selectedSeatId, now);
@@ -92,6 +97,9 @@ export const useSeatAssignment = ({
       [selectedSeatId]: { userId: null, status: "present", startedAt: null },
     }));
     if (isWeekendDay(nowDate)) showWeekendFarewell();
+    if (leavingUser && isCleaningDutyPending?.(leavingUser.name)) {
+      showCleaningDutyDeparture?.(leavingUser.name);
+    }
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
   };
@@ -109,6 +117,9 @@ export const useSeatAssignment = ({
       },
     }));
     maybeShowCombinedOrSeparate(user.id, nowDate);
+    if (isCleaningDutyPending?.(user.name)) {
+      showCleaningDutyArrival?.(user.name);
+    }
     startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
     setSelectedSeatId(null);
@@ -146,6 +157,9 @@ export const useSeatAssignment = ({
     });
     if (chosenSeat) {
       maybeShowCombinedOrSeparate(user.id, nowDate);
+      if (isCleaningDutyPending?.(user.name)) {
+        showCleaningDutyArrival?.(user.name);
+      }
       startSession(user.id, chosenSeat, now);
     }
     setRandomUserId(user.id);
@@ -207,3 +221,4 @@ export const useSeatAssignment = ({
     getSelectedUserName,
   };
 };
+

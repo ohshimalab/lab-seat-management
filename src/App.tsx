@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { HeaderBar } from "./components/HeaderBar";
 import SeatHeatmapModal from "./components/Analytics/SeatHeatmapModal";
 import { MainPanels } from "./components/MainPanels";
@@ -22,6 +22,31 @@ import {
 } from "./config/layout";
 
 function App() {
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
+
+  const [envTempThresholds, setEnvTempThresholds] = useState<{
+    high: number;
+    low: number;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem("lab-env-thresholds");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { high: 26.0, low: 20.0 };
+  });
+
+  const handleChangeEnvTempThresholds = useCallback(
+    (t: { high: number; low: number }) => {
+      setEnvTempThresholds(t);
+      try {
+        localStorage.setItem("lab-env-thresholds", JSON.stringify(t));
+      } catch {}
+    },
+    []
+  );
+
   const {
     users,
     setUsers,
@@ -35,47 +60,20 @@ function App() {
     normalizeSeatStates,
   });
 
-  const { mqttConfig, envTelemetry, handleMqttConfigChange, setMqttConfig } =
+  const { mqttConfig, setMqttConfig, envTelemetry, handleMqttConfigChange } =
     useEnvTelemetry();
-
-  // Environment thresholds (high/low) for temperature highlighting
-  const [envTempThresholds, setEnvTempThresholds] = useState(() => {
-    try {
-      const raw = localStorage.getItem("lab-env-temp-thresholds");
-      if (!raw) return { high: 26.0, low: 20.0 };
-      const parsed = JSON.parse(raw);
-      return {
-        high: typeof parsed.high === "number" ? parsed.high : 26.0,
-        low: typeof parsed.low === "number" ? parsed.low : 20.0,
-      };
-    } catch {
-      return { high: 26.0, low: 20.0 };
-    }
-  });
-  const handleChangeEnvTempThresholds = (t: { high: number; low: number }) => {
-    setEnvTempThresholds(t);
-    try {
-      localStorage.setItem("lab-env-temp-thresholds", JSON.stringify(t));
-    } catch {
-      // ignore
-    }
-  };
-
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
 
   const {
     selectedWeekLabel,
-    leaderboardRows,
+    disableThisWeek,
     disablePrevWeek,
     disableNextWeek,
-    disableThisWeek,
     stayDurationDisplay,
-    hasUserSessionThisWeek,
+    leaderboardRows,
+    addSessionManual,
     startSession,
     endSession,
-    addSessionManual,
+    hasUserSessionThisWeek,
     updateSession,
     removeSession,
     sessions,
@@ -92,6 +90,16 @@ function App() {
     createEmptySeatStates,
   });
 
+  const { exportData, handleImportData } = useStorageIO({
+    makeExportData,
+    sessions,
+    lastResetDate,
+    mqttConfig,
+    makeImportHandler,
+    importTrackingData,
+    setMqttConfig,
+  });
+
   const { seatedUserIds, availableUsers, hasEmptySeat } = useSeatAvailability({
     seatStates,
     users,
@@ -104,14 +112,14 @@ function App() {
     weekendFarewellOpen,
     firstArrivalOpen,
     firstArrivalName,
+    combinedOpen,
+    combinedName,
     showWeeklyGreeting,
     hideWeeklyGreeting,
     showWeekendFarewell,
     hideWeekendFarewell,
     showFirstArrival,
     hideFirstArrival,
-    combinedOpen,
-    combinedName,
     showFirstWeeklyCombined,
     hideFirstWeeklyCombined,
   } = useNotifications();
@@ -179,16 +187,6 @@ function App() {
     endSession,
   });
 
-  const { exportData, handleImportData } = useStorageIO({
-    makeExportData,
-    sessions,
-    lastResetDate,
-    mqttConfig,
-    makeImportHandler,
-    importTrackingData,
-    setMqttConfig,
-  });
-
   const actionSeatId = selectedSeatId || "";
   const isSelectedSeatAway = selectedSeatId
     ? seatStates[selectedSeatId]?.status === "away"
@@ -199,12 +197,12 @@ function App() {
       <HeaderBar
         envTelemetry={envTelemetry}
         tempThresholds={envTempThresholds}
-        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
-        onOpenRandom={handleOpenRandom}
         onReset={handleReset}
         onReload={() => window.location.reload()}
-        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenHeatmap={() => setIsHeatmapOpen(true)}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenRandom={handleOpenRandom}
       />
 
       <MainPanels
