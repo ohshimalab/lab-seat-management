@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export const FIRST_ARRIVAL_KEY = "lab-first-arrival-date";
 const AUTO_CLOSE_MS = 4000;
-const DUTY_PROMPT_AUTO_CLOSE_MS = 9000; // longer so user can easily click 終わった/終わってない
+const PROMPT_AUTO_CLOSE_MS = 12000; // Longer so user can choose 完了した / まだ
 
 export const useNotifications = () => {
   const [weeklyGreetingOpen, setWeeklyGreetingOpen] = useState(false);
@@ -12,13 +12,8 @@ export const useNotifications = () => {
   const [combinedOpen, setCombinedOpen] = useState(false);
   const [combinedName, setCombinedName] = useState("");
 
-  const [cleaningDutyArrivalOpen, setCleaningDutyArrivalOpen] = useState(false);
-  const [cleaningDutyArrivalName, setCleaningDutyArrivalName] = useState("");
-
-  const [cleaningDutyDepartureOpen, setCleaningDutyDepartureOpen] =
-    useState(false);
-  const [cleaningDutyDepartureName, setCleaningDutyDepartureName] =
-    useState("");
+  const [cleaningDutyPromptOpen, setCleaningDutyPromptOpen] = useState(false);
+  const [cleaningDutyPromptName, setCleaningDutyPromptName] = useState("");
 
   const [cleaningDutyFinishedToastOpen, setCleaningDutyFinishedToastOpen] =
     useState(false);
@@ -58,22 +53,13 @@ export const useNotifications = () => {
   }, [combinedOpen]);
 
   useEffect(() => {
-    if (!cleaningDutyArrivalOpen) return;
+    if (!cleaningDutyPromptOpen) return;
     const id = window.setTimeout(
-      () => setCleaningDutyArrivalOpen(false),
-      AUTO_CLOSE_MS + 1000
+      () => setCleaningDutyPromptOpen(false),
+      PROMPT_AUTO_CLOSE_MS
     );
     return () => window.clearTimeout(id);
-  }, [cleaningDutyArrivalOpen]);
-
-  useEffect(() => {
-    if (!cleaningDutyDepartureOpen) return;
-    const id = window.setTimeout(
-      () => setCleaningDutyDepartureOpen(false),
-      DUTY_PROMPT_AUTO_CLOSE_MS
-    );
-    return () => window.clearTimeout(id);
-  }, [cleaningDutyDepartureOpen]);
+  }, [cleaningDutyPromptOpen]);
 
   useEffect(() => {
     if (!cleaningDutyFinishedToastOpen) return;
@@ -111,21 +97,12 @@ export const useNotifications = () => {
   }, []);
   const hideFirstWeeklyCombined = useCallback(() => setCombinedOpen(false), []);
 
-  const showCleaningDutyArrival = useCallback((name: string) => {
-    setCleaningDutyArrivalName(name);
-    setCleaningDutyArrivalOpen(true);
+  const showCleaningDutyPrompt = useCallback((name: string) => {
+    setCleaningDutyPromptName(name);
+    setCleaningDutyPromptOpen(true);
   }, []);
-  const hideCleaningDutyArrival = useCallback(
-    () => setCleaningDutyArrivalOpen(false),
-    []
-  );
-
-  const showCleaningDutyDeparture = useCallback((name: string) => {
-    setCleaningDutyDepartureName(name);
-    setCleaningDutyDepartureOpen(true);
-  }, []);
-  const hideCleaningDutyDeparture = useCallback(
-    () => setCleaningDutyDepartureOpen(false),
+  const hideCleaningDutyPrompt = useCallback(
+    () => setCleaningDutyPromptOpen(false),
     []
   );
 
@@ -145,10 +122,8 @@ export const useNotifications = () => {
     firstArrivalName,
     combinedOpen,
     combinedName,
-    cleaningDutyArrivalOpen,
-    cleaningDutyArrivalName,
-    cleaningDutyDepartureOpen,
-    cleaningDutyDepartureName,
+    cleaningDutyPromptOpen,
+    cleaningDutyPromptName,
     cleaningDutyFinishedToastOpen,
     cleaningDutyFinishedName,
     showWeeklyGreeting,
@@ -159,12 +134,9 @@ export const useNotifications = () => {
     hideFirstArrival,
     showFirstWeeklyCombined,
     hideFirstWeeklyCombined,
-    showCleaningDutyArrival,
-    hideCleaningDutyArrival,
-    showCleaningDutyDeparture,
-    hideCleaningDutyDeparture,
+    showCleaningDutyPrompt,
+    hideCleaningDutyPrompt,
     showCleaningDutyFinishedToast,
     hideCleaningDutyFinishedToast,
   };
 };
-

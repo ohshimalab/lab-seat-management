@@ -5,7 +5,7 @@ interface PanelCardProps {
   className?: string;
   padding?: "none" | "sm" | "md";
   scroll?: "none" | "y";
-  tone?: "default" | "dark";
+  tone?: "default" | "dark" | "light";
 }
 
 export const PanelCard = ({

@@ -17,8 +17,7 @@ interface Params {
   showFirstArrival: (name: string) => void;
   showFirstWeeklyCombined: (name: string) => void;
   isCleaningDutyPending?: (userName: string) => boolean;
-  showCleaningDutyArrival?: (name: string) => void;
-  showCleaningDutyDeparture?: (name: string) => void;
+  showCleaningDutyPrompt?: (userName: string) => void;
 }
 
 const isWeekendDay = (date: Date) => {
@@ -38,8 +37,7 @@ export const useSeatAssignment = ({
   showFirstArrival,
   showFirstWeeklyCombined,
   isCleaningDutyPending,
-  showCleaningDutyArrival,
-  showCleaningDutyDeparture,
+  showCleaningDutyPrompt,
 }: Params) => {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -98,7 +96,7 @@ export const useSeatAssignment = ({
     }));
     if (isWeekendDay(nowDate)) showWeekendFarewell();
     if (leavingUser && isCleaningDutyPending?.(leavingUser.name)) {
-      showCleaningDutyDeparture?.(leavingUser.name);
+      showCleaningDutyPrompt?.(leavingUser.name);
     }
     setIsActionModalOpen(false);
     setSelectedSeatId(null);
@@ -118,7 +116,7 @@ export const useSeatAssignment = ({
     }));
     maybeShowCombinedOrSeparate(user.id, nowDate);
     if (isCleaningDutyPending?.(user.name)) {
-      showCleaningDutyArrival?.(user.name);
+      showCleaningDutyPrompt?.(user.name);
     }
     startSession(user.id, selectedSeatId, now);
     setIsUserModalOpen(false);
@@ -158,7 +156,7 @@ export const useSeatAssignment = ({
     if (chosenSeat) {
       maybeShowCombinedOrSeparate(user.id, nowDate);
       if (isCleaningDutyPending?.(user.name)) {
-        showCleaningDutyArrival?.(user.name);
+        showCleaningDutyPrompt?.(user.name);
       }
       startSession(user.id, chosenSeat, now);
     }
@@ -221,4 +219,3 @@ export const useSeatAssignment = ({
     getSelectedUserName,
   };
 };
-

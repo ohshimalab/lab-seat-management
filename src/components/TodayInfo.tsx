@@ -128,14 +128,14 @@ export const TodayInfo: React.FC = () => {
       {/* Header with Navigation */}
       <div className="flex justify-between items-center pb-3 mb-3 border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="text-2xl" aria-hidden="true">
+          <span className="text-2xl md:text-3xl" aria-hidden="true">
             📅
           </span>
           <div>
-            <h2 className="text-lg md:text-xl font-extrabold text-gray-900 leading-tight">
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">
               今日は何の日？
             </h2>
-            <div className="text-xs md:text-sm font-bold text-indigo-600">
+            <div className="text-sm md:text-base font-bold text-indigo-600">
               {month}月{day}日（{dayOfWeek}）
             </div>
           </div>
@@ -146,7 +146,7 @@ export const TodayInfo: React.FC = () => {
             <button
               type="button"
               onClick={handleResetToToday}
-              className="text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold px-2.5 py-1 rounded-md transition cursor-pointer"
+              className="text-xs md:text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
               title="今日の日付に戻る"
             >
               今日
@@ -155,7 +155,7 @@ export const TodayInfo: React.FC = () => {
           <button
             type="button"
             onClick={handlePrevDay}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold transition cursor-pointer"
+            className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm md:text-base font-bold transition cursor-pointer"
             title="前日を見る"
           >
             ◀
@@ -163,7 +163,7 @@ export const TodayInfo: React.FC = () => {
           <button
             type="button"
             onClick={handleNextDay}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold transition cursor-pointer"
+            className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm md:text-base font-bold transition cursor-pointer"
             title="翌日を見る"
           >
             ▶
@@ -171,7 +171,7 @@ export const TodayInfo: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsCustomModalOpen(true)}
-            className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold px-2.5 py-1 rounded-md transition ml-1 cursor-pointer"
+            className="text-xs md:text-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold px-3 py-1.5 rounded-lg transition ml-1 cursor-pointer"
             title="研究室の記念日を追加"
           >
             + 記念日
@@ -180,23 +180,23 @@ export const TodayInfo: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
+      <div className="flex-1 overflow-y-auto pr-1 flex flex-col justify-center min-h-0">
         {activeItem ? (
-          <div className="bg-gradient-to-br from-indigo-50/90 via-sky-50/80 to-purple-50/70 border border-indigo-100/90 rounded-2xl p-4 md:p-5 shadow-sm">
-            <div className="flex items-start gap-3.5">
-              <span className="text-4xl md:text-5xl shrink-0 p-1.5 bg-white rounded-2xl shadow-sm border border-indigo-50/80">
+          <div className="bg-gradient-to-br from-indigo-50/90 via-sky-50/80 to-purple-50/70 border border-indigo-100/90 rounded-2xl p-5 md:p-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <span className="text-5xl md:text-6xl shrink-0 p-2.5 bg-white rounded-2xl shadow-sm border border-indigo-50/80">
                 {activeItem.emoji}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className="text-xs font-extrabold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                  <span className="text-xs md:text-sm font-extrabold text-indigo-700 bg-indigo-100/80 px-2.5 py-0.5 rounded-full">
                     今日は
                   </span>
-                  <h3 className="text-base md:text-lg font-bold text-gray-900 tracking-tight">
+                  <h3 className="text-lg md:text-2xl font-black text-gray-900 tracking-tight">
                     {activeItem.title}
                   </h3>
                   {activeItem.category === "lab" && (
-                    <span className="text-[11px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-xs bg-emerald-500 text-white px-2.5 py-0.5 rounded-full font-bold">
                       研究室記念日
                     </span>
                   )}
@@ -204,7 +204,7 @@ export const TodayInfo: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleDeleteCustom(activeItem.id)}
-                      className="ml-auto text-gray-400 hover:text-red-500 text-sm px-1.5 cursor-pointer"
+                      className="ml-auto text-gray-400 hover:text-red-500 text-base px-1.5 cursor-pointer"
                       title="この記念日を削除"
                     >
                       ✕
@@ -212,7 +212,7 @@ export const TodayInfo: React.FC = () => {
                   )}
                 </div>
                 {activeItem.description && (
-                  <p className="text-xs md:text-sm text-gray-700 leading-relaxed mt-1.5">
+                  <p className="text-sm md:text-base text-gray-700 leading-relaxed font-medium mt-2">
                     {activeItem.description}
                   </p>
                 )}

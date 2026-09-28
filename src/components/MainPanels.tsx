@@ -2,6 +2,7 @@ import type React from "react";
 import { SeatGrid } from "./SeatGrid";
 import { TrainInfo } from "./TrainInfo";
 import { TodayInfo } from "./TodayInfo";
+import { CleaningDutyBar } from "./CleaningDutyBar";
 import { PanelCard } from "./PanelCard";
 import type { SeatLayout, SeatState, StaySession, User } from "../types";
 
@@ -12,6 +13,8 @@ interface MainPanelsProps {
   draggingSeatId: string | null;
   sessions: StaySession[];
   nowMs: number;
+  cleaningDutyUser?: string | null;
+  nextCleaningDutyUser?: string | null;
   onSeatClick: (seatId: string) => void;
   onSeatDragStart: (seatId: string) => void;
   onSeatDragOver: (
@@ -29,6 +32,8 @@ export const MainPanels = ({
   draggingSeatId,
   sessions,
   nowMs,
+  cleaningDutyUser,
+  nextCleaningDutyUser,
   onSeatClick,
   onSeatDragStart,
   onSeatDragOver,
@@ -54,11 +59,17 @@ export const MainPanels = ({
           />
         </PanelCard>
       </div>
-      <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2">
-        <div className="min-h-0" style={{ flex: 1 }}>
+      <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col gap-2.5">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <TrainInfo />
         </div>
-        <div className="min-h-0" style={{ flex: 1 }}>
+        {cleaningDutyUser && (
+          <CleaningDutyBar
+            dutyUser={cleaningDutyUser}
+            nextUser={nextCleaningDutyUser}
+          />
+        )}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <TodayInfo />
         </div>
       </div>

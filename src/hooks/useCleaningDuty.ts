@@ -1,170 +1,157 @@
 import { useState, useEffect, useCallback } from "react";
 
-export const LS_CLEANING_CONFIG = "cleaningDuty.rotationConfig";
-export const LS_MANUAL_DUTY = "cleaningDuty.manualThisWeek";
+export const CLEANING_DUTY_STORAGE_KEY = "lab-cleaning-duty-config";
 
 export interface CleaningDutyConfig {
   members: string[];
   currentIndex: number;
-  lastRotatedWeek: string;
+  lastRotatedMonday: string;
+  completedWeeks: Record<string, boolean>;
 }
 
-export const getWeekKey = (date = new Date()): string => {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+export const getMondayOfWeek = (d: Date = new Date()): string => {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 is Sunday, 1 is Monday...
+  const diff = (day === 0 ? -6 : 1) - day;
+  date.setDate(date.getDate() + diff);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const dayStr = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dayStr}`;
 };
 
-export const loadCleaningConfig = (): CleaningDutyConfig => {
-  try {
-    const raw = localStorage.getItem(LS_CLEANING_CONFIG);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.members)) {
-        return {
-          members: parsed.members,
-          currentIndex:
-            typeof parsed.currentIndex === "number" && parsed.members.length > 0
-              ? ((parsed.currentIndex % parsed.members.length) + parsed.members.length) % parsed.members.length
-              : 0,
-          lastRotatedWeek: parsed.lastRotatedWeek || getWeekKey(),
-        };
-      }
-    }
-  } catch {
-    // ignore
+const DEFAULT_CONFIG: CleaningDutyConfig = {
+  members: ["大島", "近藤", "佐藤", "鈴木", "高橋"],
+  currentIndex: 0,
+  lastRotatedMonday: getMondayOfWeek(),
+  completedWeeks: {},
+};
+
+export const loadCleaningDutyConfig = (): CleaningDutyConfig => {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return DEFAULT_CONFIG;
   }
-  return {
-    members: [],
-    currentIndex: 0,
-    lastRotatedWeek: getWeekKey(),
-  };
+  try {
+    const raw = localStorage.getItem(CLEANING_DUTY_STORAGE_KEY);
+    if (!raw) return DEFAULT_CONFIG;
+    const parsed = JSON.parse(raw);
+    return {
+      members: Array.isArray(parsed.members) ? parsed.members : DEFAULT_CONFIG.members,
+      currentIndex: typeof parsed.currentIndex === "number" ? parsed.currentIndex : 0,
+      lastRotatedMonday: parsed.lastRotatedMonday || getMondayOfWeek(),
+      completedWeeks: parsed.completedWeeks || {},
+    };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
 };
 
-export const saveCleaningConfig = (config: CleaningDutyConfig) => {
+export const saveCleaningDutyConfig = (config: CleaningDutyConfig): void => {
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
-    localStorage.setItem(LS_CLEANING_CONFIG, JSON.stringify(config));
+    localStorage.setItem(CLEANING_DUTY_STORAGE_KEY, JSON.stringify(config));
     window.dispatchEvent(new Event("cleaningDutyConfigChanged"));
-  } catch {
-    // ignore
+  } catch (err) {
+    console.error("Failed to save cleaning duty config", err);
   }
 };
 
 export const useCleaningDuty = () => {
   const [config, setConfig] = useState<CleaningDutyConfig>(() => {
-    const initial = loadCleaningConfig();
-    const currentWeek = getWeekKey();
-    if (initial.members.length > 0 && initial.lastRotatedWeek && initial.lastRotatedWeek !== currentWeek) {
-      const nextIndex = (initial.currentIndex + 1) % initial.members.length;
-      const updated = {
-        ...initial,
+    const loaded = loadCleaningDutyConfig();
+    const currentMonday = getMondayOfWeek();
+    // 自動更新サイクル: 毎週月曜日に自動で次の一人へ繰り上げ
+    if (loaded.lastRotatedMonday && loaded.lastRotatedMonday !== currentMonday) {
+      const nextIndex =
+        loaded.members.length > 0
+          ? (loaded.currentIndex + 1) % loaded.members.length
+          : 0;
+      const updated: CleaningDutyConfig = {
+        ...loaded,
         currentIndex: nextIndex,
-        lastRotatedWeek: currentWeek,
+        lastRotatedMonday: currentMonday,
       };
-      saveCleaningConfig(updated);
+      saveCleaningDutyConfig(updated);
       return updated;
     }
-    return initial;
+    return loaded;
   });
 
-  const [manualThisWeek, setManualThisWeekState] = useState<string | null>(() =>
-    localStorage.getItem(LS_MANUAL_DUTY)
-  );
-
-  useEffect(() => {
-    const onConfigChange = () => {
-      setConfig(loadCleaningConfig());
-      setManualThisWeekState(localStorage.getItem(LS_MANUAL_DUTY));
-    };
-
-    window.addEventListener("cleaningDutyConfigChanged", onConfigChange);
-    window.addEventListener("storage", onConfigChange);
-    return () => {
-      window.removeEventListener("cleaningDutyConfigChanged", onConfigChange);
-      window.removeEventListener("storage", onConfigChange);
-    };
+  const syncConfig = useCallback(() => {
+    setConfig(loadCleaningDutyConfig());
   }, []);
 
-  // Check weekly auto-rotation periodically
   useEffect(() => {
-    const checkRotation = () => {
-      const currentWeek = getWeekKey();
+    window.addEventListener("cleaningDutyConfigChanged", syncConfig);
+    window.addEventListener("storage", syncConfig);
+    return () => {
+      window.removeEventListener("cleaningDutyConfigChanged", syncConfig);
+      window.removeEventListener("storage", syncConfig);
+    };
+  }, [syncConfig]);
+
+  // Periodic Monday check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentMonday = getMondayOfWeek();
       setConfig((prev) => {
-        if (prev.members.length > 0 && prev.lastRotatedWeek !== currentWeek) {
-          const nextIndex = (prev.currentIndex + 1) % prev.members.length;
-          const updated = {
+        if (prev.lastRotatedMonday !== currentMonday) {
+          const nextIndex =
+            prev.members.length > 0
+              ? (prev.currentIndex + 1) % prev.members.length
+              : 0;
+          const updated: CleaningDutyConfig = {
             ...prev,
             currentIndex: nextIndex,
-            lastRotatedWeek: currentWeek,
+            lastRotatedMonday: currentMonday,
           };
-          saveCleaningConfig(updated);
+          saveCleaningDutyConfig(updated);
           return updated;
         }
         return prev;
       });
-    };
+    }, 60_000);
 
-    const interval = setInterval(checkRotation, 60_000);
     return () => clearInterval(interval);
   }, []);
 
-  const effectiveThisWeek =
-    manualThisWeek?.trim() ||
-    (config.members.length > 0
-      ? config.members[config.currentIndex % config.members.length]
-      : null);
+  const currentMonday = getMondayOfWeek();
+  const isCompletedThisWeek = Boolean(config.completedWeeks[currentMonday]);
+
+  const thisWeek =
+    config.members.length > 0 && config.currentIndex < config.members.length
+      ? config.members[config.currentIndex]
+      : null;
 
   const nextWeek =
     config.members.length > 1
       ? config.members[(config.currentIndex + 1) % config.members.length]
       : null;
 
-  const isCleaningDutyUser = useCallback(
-    (userName: string): boolean => {
-      if (!effectiveThisWeek || !userName) return false;
-      const duty = effectiveThisWeek.trim().toLowerCase();
-      const user = userName.trim().toLowerCase();
-      if (!duty || !user) return false;
-      return user === duty || user.includes(duty) || duty.includes(user);
-    },
-    [effectiveThisWeek]
-  );
-
   const addMember = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     setConfig((prev) => {
       if (prev.members.includes(trimmed)) return prev;
-      const updated = {
-        ...prev,
-        members: [...prev.members, trimmed],
-      };
-      saveCleaningConfig(updated);
+      const updated = { ...prev, members: [...prev.members, trimmed] };
+      saveCleaningDutyConfig(updated);
       return updated;
     });
   }, []);
 
   const removeMember = useCallback((index: number) => {
     setConfig((prev) => {
-      if (index < 0 || index >= prev.members.length) return prev;
-      const newMembers = prev.members.filter((_, i) => i !== index);
-      let newCurrent = prev.currentIndex;
-      if (newMembers.length === 0) {
-        newCurrent = 0;
-      } else if (index < prev.currentIndex) {
-        newCurrent = prev.currentIndex - 1;
-      } else if (newCurrent >= newMembers.length) {
-        newCurrent = 0;
+      const nextMembers = prev.members.filter((_, i) => i !== index);
+      let nextIndex = prev.currentIndex;
+      if (nextIndex >= nextMembers.length) {
+        nextIndex = Math.max(0, nextMembers.length - 1);
       }
       const updated = {
         ...prev,
-        members: newMembers,
-        currentIndex: newCurrent,
+        members: nextMembers,
+        currentIndex: nextIndex,
       };
-      saveCleaningConfig(updated);
+      saveCleaningDutyConfig(updated);
       return updated;
     });
   }, []);
@@ -175,25 +162,25 @@ export const useCleaningDuty = () => {
         fromIndex < 0 ||
         fromIndex >= prev.members.length ||
         toIndex < 0 ||
-        toIndex >= prev.members.length ||
-        fromIndex === toIndex
+        toIndex >= prev.members.length
       ) {
         return prev;
       }
-      const newMembers = [...prev.members];
-      const [item] = newMembers.splice(fromIndex, 1);
-      newMembers.splice(toIndex, 0, item);
+      const currentMember = prev.members[prev.currentIndex];
+      const nextMembers = [...prev.members];
+      const [moved] = nextMembers.splice(fromIndex, 1);
+      nextMembers.splice(toIndex, 0, moved);
 
-      // keep currently active person active
-      const currentPerson = prev.members[prev.currentIndex];
-      const newCurrent = newMembers.indexOf(currentPerson);
+      // Keep current assignment pointing to same person if possible
+      let newCurrentIndex = nextMembers.indexOf(currentMember);
+      if (newCurrentIndex === -1) newCurrentIndex = 0;
 
       const updated = {
         ...prev,
-        members: newMembers,
-        currentIndex: newCurrent >= 0 ? newCurrent : 0,
+        members: nextMembers,
+        currentIndex: newCurrentIndex,
       };
-      saveCleaningConfig(updated);
+      saveCleaningDutyConfig(updated);
       return updated;
     });
   }, []);
@@ -201,74 +188,87 @@ export const useCleaningDuty = () => {
   const setCurrentIndex = useCallback((index: number) => {
     setConfig((prev) => {
       if (index < 0 || index >= prev.members.length) return prev;
-      const updated = {
-        ...prev,
-        currentIndex: index,
-        lastRotatedWeek: getWeekKey(),
-      };
-      saveCleaningConfig(updated);
+      const updated = { ...prev, currentIndex: index };
+      saveCleaningDutyConfig(updated);
       return updated;
     });
-    // clear manual override if selecting an index directly
-    localStorage.removeItem(LS_MANUAL_DUTY);
-    setManualThisWeekState(null);
   }, []);
 
   const nextDuty = useCallback(() => {
     setConfig((prev) => {
       if (prev.members.length === 0) return prev;
-      const updated = {
-        ...prev,
-        currentIndex: (prev.currentIndex + 1) % prev.members.length,
-        lastRotatedWeek: getWeekKey(),
-      };
-      saveCleaningConfig(updated);
+      const nextIndex = (prev.currentIndex + 1) % prev.members.length;
+      const updated = { ...prev, currentIndex: nextIndex };
+      saveCleaningDutyConfig(updated);
       return updated;
     });
-    localStorage.removeItem(LS_MANUAL_DUTY);
-    setManualThisWeekState(null);
   }, []);
 
   const prevDuty = useCallback(() => {
     setConfig((prev) => {
       if (prev.members.length === 0) return prev;
-      const updated = {
-        ...prev,
-        currentIndex: (prev.currentIndex - 1 + prev.members.length) % prev.members.length,
-        lastRotatedWeek: getWeekKey(),
-      };
-      saveCleaningConfig(updated);
+      const prevIndex =
+        (prev.currentIndex - 1 + prev.members.length) % prev.members.length;
+      const updated = { ...prev, currentIndex: prevIndex };
+      saveCleaningDutyConfig(updated);
       return updated;
     });
-    localStorage.removeItem(LS_MANUAL_DUTY);
-    setManualThisWeekState(null);
   }, []);
 
-  const setManualThisWeek = useCallback((val: string | null) => {
-    if (val && val.trim()) {
-      localStorage.setItem(LS_MANUAL_DUTY, val.trim());
-      setManualThisWeekState(val.trim());
-    } else {
-      localStorage.removeItem(LS_MANUAL_DUTY);
-      setManualThisWeekState(null);
-    }
-    window.dispatchEvent(new Event("cleaningDutyConfigChanged"));
+  const completeThisWeek = useCallback(() => {
+    const mondayKey = getMondayOfWeek();
+    setConfig((prev) => {
+      const updated = {
+        ...prev,
+        completedWeeks: {
+          ...prev.completedWeeks,
+          [mondayKey]: true,
+        },
+      };
+      saveCleaningDutyConfig(updated);
+      return updated;
+    });
   }, []);
+
+  const resetThisWeekCompletion = useCallback(() => {
+    const mondayKey = getMondayOfWeek();
+    setConfig((prev) => {
+      const nextCompleted = { ...prev.completedWeeks };
+      delete nextCompleted[mondayKey];
+      const updated = {
+        ...prev,
+        completedWeeks: nextCompleted,
+      };
+      saveCleaningDutyConfig(updated);
+      return updated;
+    });
+  }, []);
+
+  // 当該ユーザーの着席・離席時に通知を出すべきか
+  const isUserDutyPending = useCallback(
+    (userName: string): boolean => {
+      if (!userName || !thisWeek) return false;
+      if (isCompletedThisWeek) return false;
+      return thisWeek.toLowerCase() === userName.toLowerCase();
+    },
+    [thisWeek, isCompletedThisWeek],
+  );
 
   return {
-    thisWeek: effectiveThisWeek,
+    thisWeek,
     nextWeek,
     members: config.members,
     currentIndex: config.currentIndex,
-    isCleaningDutyUser,
-    manualThisWeek,
+    isCompletedThisWeek,
+    currentMondayKey: currentMonday,
     addMember,
     removeMember,
     moveMember,
     setCurrentIndex,
     nextDuty,
     prevDuty,
-    setManualThisWeek,
+    completeThisWeek,
+    resetThisWeekCompletion,
+    isUserDutyPending,
   };
 };
-

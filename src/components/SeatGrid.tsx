@@ -72,6 +72,7 @@ const SeatRow: React.FC<SeatRowProps> = ({
             ? users.find((u) => u.id === seatState.userId) || null
             : null;
           const timeline = card?.timeline;
+
           return (
             <Seat
               key={seatId}

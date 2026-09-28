@@ -14,6 +14,7 @@ import { useSeatAssignment } from "./hooks/useSeatAssignment";
 import { useAdminActions } from "./hooks/useAdminActions";
 import { useStorageIO } from "./hooks/useStorageIO";
 import { useSeatAvailability } from "./hooks/useSeatAvailability";
+import { useCleaningDuty } from "./hooks/useCleaningDuty";
 import {
   INITIAL_LAYOUT,
   DEFAULT_USERS,
@@ -90,6 +91,14 @@ function App() {
     createEmptySeatStates,
   });
 
+  const {
+    thisWeek: cleaningDutyUser,
+    nextWeek: nextCleaningDutyUser,
+    isCompletedThisWeek: isCleaningDutyCompleted,
+    isUserDutyPending,
+    completeThisWeek,
+  } = useCleaningDuty();
+
   const { exportData, handleImportData } = useStorageIO({
     makeExportData,
     sessions,
@@ -114,6 +123,10 @@ function App() {
     firstArrivalName,
     combinedOpen,
     combinedName,
+    cleaningDutyPromptOpen,
+    cleaningDutyPromptName,
+    cleaningDutyFinishedToastOpen,
+    cleaningDutyFinishedName,
     showWeeklyGreeting,
     hideWeeklyGreeting,
     showWeekendFarewell,
@@ -122,6 +135,10 @@ function App() {
     hideFirstArrival,
     showFirstWeeklyCombined,
     hideFirstWeeklyCombined,
+    showCleaningDutyPrompt,
+    hideCleaningDutyPrompt,
+    showCleaningDutyFinishedToast,
+    hideCleaningDutyFinishedToast,
   } = useNotifications();
 
   const {
@@ -163,6 +180,8 @@ function App() {
     showWeekendFarewell,
     showFirstArrival,
     showFirstWeeklyCombined,
+    isCleaningDutyPending: isUserDutyPending,
+    showCleaningDutyPrompt,
   });
 
   const { handleAddUser, handleRemoveUser, handleReset } = useAdminActions({
@@ -212,6 +231,8 @@ function App() {
         draggingSeatId={draggingSeatId}
         sessions={sessions}
         nowMs={nowMs}
+        cleaningDutyUser={cleaningDutyUser}
+        nextCleaningDutyUser={nextCleaningDutyUser}
         onSeatClick={handleSeatClick}
         onSeatDragStart={handleSeatDragStart}
         onSeatDragOver={handleSeatDragOver}
@@ -226,10 +247,23 @@ function App() {
         firstArrivalName={firstArrivalName}
         combinedOpen={combinedOpen}
         combinedName={combinedName}
+        cleaningDutyPromptOpen={cleaningDutyPromptOpen}
+        cleaningDutyPromptName={cleaningDutyPromptName}
+        cleaningDutyFinishedToastOpen={cleaningDutyFinishedToastOpen}
+        cleaningDutyFinishedName={cleaningDutyFinishedName}
         onHideWeeklyGreeting={hideWeeklyGreeting}
         onHideWeekendFarewell={hideWeekendFarewell}
         onHideFirstArrival={hideFirstArrival}
         onHideCombined={hideFirstWeeklyCombined}
+        onHideCleaningDutyPrompt={hideCleaningDutyPrompt}
+        onCompleteCleaningDuty={() => {
+          completeThisWeek();
+          hideCleaningDutyPrompt();
+          if (cleaningDutyPromptName) {
+            showCleaningDutyFinishedToast(cleaningDutyPromptName);
+          }
+        }}
+        onHideCleaningDutyFinishedToast={hideCleaningDutyFinishedToast}
       />
 
       <ModalsLayer

@@ -54,8 +54,8 @@ export const TrainInfo: React.FC = () => {
   }, []);
 
   return (
-    <PanelCard tone="dark" className="flex flex-col">
-      <div className="border-b border-gray-600 pb-2 mb-2">
+    <PanelCard tone="dark" className="flex flex-col h-full overflow-hidden justify-between">
+      <div className="border-b border-gray-600 pb-2 mb-2 shrink-0">
         <div className="flex justify-between items-start">
           <h2 className="text-lg font-bold text-gray-200">🚇 学園都市発</h2>
           <span

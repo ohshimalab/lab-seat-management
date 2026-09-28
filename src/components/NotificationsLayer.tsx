@@ -7,20 +7,17 @@ interface NotificationsLayerProps {
   firstArrivalName: string | null;
   combinedOpen?: boolean;
   combinedName?: string | null;
-  cleaningDutyArrivalOpen?: boolean;
-  cleaningDutyArrivalName?: string | null;
-  cleaningDutyDepartureOpen?: boolean;
-  cleaningDutyDepartureName?: string | null;
+  cleaningDutyPromptOpen?: boolean;
+  cleaningDutyPromptName?: string | null;
   cleaningDutyFinishedToastOpen?: boolean;
   cleaningDutyFinishedName?: string | null;
   onHideWeeklyGreeting: () => void;
   onHideWeekendFarewell: () => void;
   onHideFirstArrival: () => void;
   onHideCombined?: () => void;
-  onHideCleaningDutyArrival?: () => void;
-  onHideCleaningDutyDeparture?: () => void;
-  onHideCleaningDutyFinishedToast?: () => void;
+  onHideCleaningDutyPrompt?: () => void;
   onCompleteCleaningDuty?: () => void;
+  onHideCleaningDutyFinishedToast?: () => void;
 }
 
 export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
@@ -30,20 +27,17 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
   firstArrivalName,
   combinedOpen,
   combinedName,
-  cleaningDutyArrivalOpen,
-  cleaningDutyArrivalName,
-  cleaningDutyDepartureOpen,
-  cleaningDutyDepartureName,
+  cleaningDutyPromptOpen,
+  cleaningDutyPromptName,
   cleaningDutyFinishedToastOpen,
   cleaningDutyFinishedName,
   onHideWeeklyGreeting,
   onHideWeekendFarewell,
   onHideFirstArrival,
   onHideCombined,
-  onHideCleaningDutyArrival,
-  onHideCleaningDutyDeparture,
-  onHideCleaningDutyFinishedToast,
+  onHideCleaningDutyPrompt,
   onCompleteCleaningDuty,
+  onHideCleaningDutyFinishedToast,
 }) => {
   return (
     <>
@@ -61,7 +55,7 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
             <button
               type="button"
               onClick={onHideCombined}
-              className="text-sm font-bold text-white/80 hover:text-white"
+              className="text-sm font-bold text-white/80 hover:text-white cursor-pointer"
               aria-label="通知を閉じる"
             >
               ✕
@@ -81,7 +75,7 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
             <button
               type="button"
               onClick={onHideWeeklyGreeting}
-              className="text-sm font-bold text-white/80 hover:text-white"
+              className="text-sm font-bold text-white/80 hover:text-white cursor-pointer"
               aria-label="通知を閉じる"
             >
               ✕
@@ -103,7 +97,7 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
             <button
               type="button"
               onClick={onHideFirstArrival}
-              className="text-sm font-bold text-white/80 hover:text-white"
+              className="text-sm font-bold text-white/80 hover:text-white cursor-pointer"
               aria-label="通知を閉じる"
             >
               ✕
@@ -123,7 +117,7 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
             <button
               type="button"
               onClick={onHideWeekendFarewell}
-              className="text-sm font-bold text-white/80 hover:text-white"
+              className="text-sm font-bold text-white/80 hover:text-white cursor-pointer"
               aria-label="通知を閉じる"
             >
               ✕
@@ -132,69 +126,39 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
         </div>
       )}
 
-      {/* Cleaning Duty Arrival Toast */}
-      {cleaningDutyArrivalOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
-          <div className="pointer-events-auto mt-20 flex items-center gap-3 rounded-full bg-teal-600 px-5 py-3 text-white shadow-2xl border border-teal-400/40 animate-bounce-once">
-            <span className="text-2xl" aria-hidden="true">
-              🧹
-            </span>
-            <span className="font-semibold tracking-tight">
-              {cleaningDutyArrivalName
-                ? `${cleaningDutyArrivalName}さん、今週の掃除当番です！よろしくお願いします。`
-                : "今週の掃除当番です！よろしくお願いします。"}
-            </span>
-            <button
-              type="button"
-              onClick={onHideCleaningDutyArrival}
-              className="text-sm font-bold text-white/80 hover:text-white ml-1"
-              aria-label="当番通知を閉じる"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Cleaning Duty Departure Prompt (今週の掃除当番は終わりましたか？) */}
-      {cleaningDutyDepartureOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
-          <div className="pointer-events-auto mt-20 flex flex-col sm:flex-row items-center gap-3 rounded-2xl bg-teal-800 px-6 py-4 text-white shadow-2xl border border-teal-500/60 animate-bounce-once">
+      {/* 掃除当番プロンプト通知 */}
+      {cleaningDutyPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-20 flex flex-col sm:flex-row items-center gap-3.5 rounded-2xl bg-teal-800 px-6 py-4 text-white shadow-2xl border border-teal-500/60 animate-bounce-once">
             <div className="flex items-center gap-2.5">
-              <span className="text-2xl" aria-hidden="true">
+              <span className="text-3xl" aria-hidden="true">
                 🧹
               </span>
               <span className="font-bold text-sm sm:text-base tracking-tight">
-                {cleaningDutyDepartureName
-                  ? `${cleaningDutyDepartureName}さん、`
-                  : ""}
-                今週の掃除当番は終わりましたか？
+                {cleaningDutyPromptName ? `${cleaningDutyPromptName}さん、` : ""}
+                今週の掃除当番です。掃除は完了しましたか？
               </span>
             </div>
             <div className="flex items-center gap-2 mt-2 sm:mt-0">
               <button
                 type="button"
-                onClick={() => {
-                  onCompleteCleaningDuty?.();
-                  onHideCleaningDutyDeparture?.();
-                }}
+                onClick={onCompleteCleaningDuty}
                 className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-lg shadow-md transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                title="掃除完了として登録（今週はこれ以降通知されません）"
               >
-                <span>✓</span> 終わった
+                <span>✓</span> 完了した
               </button>
               <button
                 type="button"
-                onClick={onHideCleaningDutyDeparture}
+                onClick={onHideCleaningDutyPrompt}
                 className="bg-teal-900/90 hover:bg-teal-900 text-teal-100 hover:text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg border border-teal-600 transition active:scale-95 cursor-pointer"
               >
-                終わってない
+                まだ
               </button>
               <button
                 type="button"
-                onClick={onHideCleaningDutyDeparture}
-                className="text-sm text-white/60 hover:text-white ml-1 p-1"
-                aria-label="当番確認を閉じる"
+                onClick={onHideCleaningDutyPrompt}
+                className="text-sm text-white/60 hover:text-white ml-1 p-1 cursor-pointer"
+                aria-label="通知を閉じる"
               >
                 ✕
               </button>
@@ -203,21 +167,21 @@ export const NotificationsLayer: React.FC<NotificationsLayerProps> = ({
         </div>
       )}
 
-      {/* Cleaning Duty Finished Confirmation Toast */}
+      {/* 完了トースト */}
       {cleaningDutyFinishedToastOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center pointer-events-none">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pointer-events-none">
           <div className="pointer-events-auto mt-20 flex items-center gap-3 rounded-full bg-emerald-700 px-5 py-3 text-white shadow-2xl border border-emerald-400/50">
             <span className="text-xl" aria-hidden="true">
               ✨
             </span>
             <span className="font-semibold text-sm tracking-tight">
               {cleaningDutyFinishedName ? `${cleaningDutyFinishedName}さん、` : ""}
-              お疲れ様でした！今週の掃除当番を完了にしました（今週は通知を停止します）。
+              お疲れ様でした！今週の掃除当番を完了として記録しました（今週は通知を停止します）。
             </span>
             <button
               type="button"
               onClick={onHideCleaningDutyFinishedToast}
-              className="text-sm font-bold text-white/80 hover:text-white"
+              className="text-sm font-bold text-white/80 hover:text-white cursor-pointer"
               aria-label="完了通知を閉じる"
             >
               ✕
