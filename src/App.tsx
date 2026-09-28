@@ -34,7 +34,9 @@ function App() {
     try {
       const saved = localStorage.getItem("lab-env-thresholds");
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch {
+      // ignore parsing error
+    }
     return { high: 26.0, low: 20.0 };
   });
 
@@ -43,7 +45,9 @@ function App() {
       setEnvTempThresholds(t);
       try {
         localStorage.setItem("lab-env-thresholds", JSON.stringify(t));
-      } catch {}
+      } catch {
+        // ignore storage error
+      }
     },
     []
   );
@@ -94,7 +98,6 @@ function App() {
   const {
     thisWeek: cleaningDutyUser,
     nextWeek: nextCleaningDutyUser,
-    isCompletedThisWeek: isCleaningDutyCompleted,
     isUserDutyPending,
     completeThisWeek,
   } = useCleaningDuty();

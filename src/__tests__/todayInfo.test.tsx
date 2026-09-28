@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { TodayInfo } from "../components/TodayInfo";
 import {
   getAnniversariesForDate,
-  formatDateKey,
   saveCustomAnniversary,
   getCustomAnniversaries,
   deleteCustomAnniversary,

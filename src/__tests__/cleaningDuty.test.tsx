@@ -1,4 +1,4 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, renderHook } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
@@ -43,82 +43,64 @@ describe("useCleaningDuty hook & Cleaning Duty System", () => {
     expect(config.currentIndex).toBe(0);
 
     // Call hook which checks current Monday (which is after 2026-09-21)
-    let result: ReturnType<typeof useCleaningDuty> | null = null;
-    const TestComponent = () => {
-      result = useCleaningDuty();
-      return null;
-    };
-
-    render(<TestComponent />);
-    expect(result).not.toBeNull();
+    const { result } = renderHook(() => useCleaningDuty());
+    expect(result.current).not.toBeNull();
     // Advanced from 0 to 1 ("近藤")
-    expect(result!.currentIndex).toBe(1);
-    expect(result!.thisWeek).toBe("近藤");
+    expect(result.current.currentIndex).toBe(1);
+    expect(result.current.thisWeek).toBe("近藤");
   });
 
   it("completes duty for the week and stops pending prompt", () => {
-    let result: ReturnType<typeof useCleaningDuty> | null = null;
-    const TestComponent = () => {
-      result = useCleaningDuty();
-      return null;
-    };
+    const { result } = renderHook(() => useCleaningDuty());
+    expect(result.current).not.toBeNull();
 
-    render(<TestComponent />);
-    expect(result).not.toBeNull();
-
-    const currentDutyUser = result!.thisWeek!;
-    expect(result!.isUserDutyPending(currentDutyUser)).toBe(true);
+    const currentDutyUser = result.current.thisWeek!;
+    expect(result.current.isUserDutyPending(currentDutyUser)).toBe(true);
 
     // Complete duty
     act(() => {
-      result!.completeThisWeek();
+      result.current.completeThisWeek();
     });
 
-    expect(result!.isCompletedThisWeek).toBe(true);
+    expect(result.current.isCompletedThisWeek).toBe(true);
     // After completion, duty is no longer pending
-    expect(result!.isUserDutyPending(currentDutyUser)).toBe(false);
+    expect(result.current.isUserDutyPending(currentDutyUser)).toBe(false);
 
     // Reset completion
     act(() => {
-      result!.resetThisWeekCompletion();
+      result.current.resetThisWeekCompletion();
     });
-    expect(result!.isCompletedThisWeek).toBe(false);
-    expect(result!.isUserDutyPending(currentDutyUser)).toBe(true);
+    expect(result.current.isCompletedThisWeek).toBe(false);
+    expect(result.current.isUserDutyPending(currentDutyUser)).toBe(true);
   });
 
   it("allows manual reassignment of duty user and member reordering", () => {
-    let result: ReturnType<typeof useCleaningDuty> | null = null;
-    const TestComponent = () => {
-      result = useCleaningDuty();
-      return null;
-    };
-
-    render(<TestComponent />);
-    expect(result).not.toBeNull();
+    const { result } = renderHook(() => useCleaningDuty());
+    expect(result.current).not.toBeNull();
 
     // Change to index 2
     act(() => {
-      result!.setCurrentIndex(2);
+      result.current.setCurrentIndex(2);
     });
-    expect(result!.currentIndex).toBe(2);
+    expect(result.current.currentIndex).toBe(2);
 
     // Next duty
     act(() => {
-      result!.nextDuty();
+      result.current.nextDuty();
     });
-    expect(result!.currentIndex).toBe(3);
+    expect(result.current.currentIndex).toBe(3);
 
     // Prev duty
     act(() => {
-      result!.prevDuty();
+      result.current.prevDuty();
     });
-    expect(result!.currentIndex).toBe(2);
+    expect(result.current.currentIndex).toBe(2);
 
     // Add member
     act(() => {
-      result!.addMember("新メンバー");
+      result.current.addMember("新メンバー");
     });
-    expect(result!.members.includes("新メンバー")).toBe(true);
+    expect(result.current.members.includes("新メンバー")).toBe(true);
   });
 
   it("displays duty between train and today info, hides completion status on surface, prompts only when pending", async () => {

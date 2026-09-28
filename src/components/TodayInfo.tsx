@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { PanelCard } from "./PanelCard";
 import {
   getAnniversariesForDate,
@@ -44,7 +44,11 @@ export const TodayInfo: React.FC = () => {
   // Fetch Wikipedia anniversaries for the selected date
   useEffect(() => {
     let isCancelled = false;
-    setIsLoadingWiki(true);
+    Promise.resolve().then(() => {
+      if (!isCancelled) {
+        setIsLoadingWiki(true);
+      }
+    });
 
     fetchWikiAnniversaries(month, day)
       .then((items) => {
@@ -67,7 +71,11 @@ export const TodayInfo: React.FC = () => {
 
   // Combine local custom/fixed anniversaries with Wikipedia anniversaries
   // Avoid duplicate titles
-  const localAnniversaries = getAnniversariesForDate(selectedDate);
+  const localAnniversaries = useMemo(() => {
+    // depend on refreshKey to re-fetch when custom anniversaries are added/deleted
+    if (refreshKey < 0) return [];
+    return getAnniversariesForDate(selectedDate);
+  }, [selectedDate, refreshKey]);
   const combinedAnniversaries: AnniversaryItem[] = [...localAnniversaries];
 
   for (const wikiItem of wikiEvents) {
